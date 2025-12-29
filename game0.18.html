@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Perfect Sync</title>
+    <title>Number Hammer: Character Fix</title>
     <style>
         :root { --side-width: 80px; }
         body {
@@ -12,7 +12,6 @@
             overflow: hidden; touch-action: none; display: flex; height: 100vh;
         }
 
-        /* 操作パネル */
         .player-side {
             width: var(--side-width); display: flex; flex-direction: column;
             background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0;
@@ -20,7 +19,6 @@
         }
         .player-ui { height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #333; }
         .life { color: #ff4444; font-size: 1.1rem; font-weight: bold; }
-
         .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 15px 8px; }
         .btn {
             flex: 1; border: none; border-radius: 15px; font-size: 1.2rem; font-weight: 900; color: white;
@@ -32,7 +30,6 @@
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
 
-        /* ゲーム画面 */
         #game-world {
             flex-grow: 1; position: relative;
             background: #87ceeb;
@@ -43,12 +40,60 @@
 
         #hammer-info {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85); color: white; padding: 8px 30px;
+            background: rgba(0,0,0,0.85); color: white; padding: 10px 30px;
             border-radius: 50px; border: 2px solid #ffd700; z-index: 100;
-            display: flex; gap: 20px; align-items: center;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .info-label { font-size: 0.7rem; color: #ffd700; font-weight: bold; }
+        .current-box { display: flex; align-items: center; gap: 15px; }
+
+        /* キャラクター基本設定 */
+        .character { 
+            position: absolute; bottom: -2%; width: 55vh; height: 55vh; z-index: 30;
+            transition: left 0.5s, right 0.5s; /* transformをアニメーションさせないことで反転バグを防ぐ */
+        }
+        .character img { 
+            width: 100%; height: 100%; object-fit: contain; 
+            animation: floating 2.5s ease-in-out infinite; 
+        }
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        
+        /* 1P用の震動（通常） */
+        @keyframes shake1P {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-15px); }
+            40%, 80% { transform: translateX(15px); }
+        }
+        /* 2P用の震動（反転状態を維持したまま震える） */
+        @keyframes shake2P {
+            0%, 100% { transform: scaleX(-1) translateX(0); }
+            20%, 60% { transform: scaleX(-1) translateX(-15px); }
+            40%, 80% { transform: scaleX(-1) translateX(15px); }
         }
 
-        /* プラカード */
+        .shake-p1 { animation: shake1P 0.4s ease-in-out !important; }
+        .shake-p2 { animation: shake2P 0.4s ease-in-out !important; }
+
+        #char-p1 { left: -70%; }
+        #char-p2 { right: -70%; transform: scaleX(-1); }
+
+        /* ポップアップ（文字） */
+        .status-container {
+            position: absolute; width: 200px; height: 60px; top: 0%; left: 50%;
+            transform: translateX(-50%); display: flex; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 110;
+        }
+        /* 2P側の文字だけ反転を打ち消す */
+        #char-p2 .status-container { transform: translateX(-50%) scaleX(-1); }
+
+        .status-pop {
+            font-weight: 900; text-shadow: 2px 2px 0 #000;
+            opacity: 0; transform: scale(0.5); transition: 0.2s;
+            white-space: nowrap;
+        }
+        .miss-pop { color: #ffff00; font-size: 3rem; }
+        .penalty-pop { color: #ff0000; font-size: 3rem; }
+
         .placard {
             position: absolute; width: 15vw; height: 22vw; max-width: 110px; max-height: 160px;
             background: #fff; border: 5px solid #222; border-radius: 15px;
@@ -60,34 +105,6 @@
         #card-p1 { left: 12%; }
         #card-p2 { right: 12%; }
 
-        /* キャラクター */
-        .character { 
-            position: absolute; bottom: -2%; width: 55vh; height: 55vh; z-index: 30;
-            transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .character img { 
-            width: 100%; height: 100%; object-fit: contain; 
-            animation: floating 2.5s ease-in-out infinite; 
-        }
-        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
-        #char-p1 { left: -70%; }
-        #char-p2 { right: -70%; transform: scaleX(-1); }
-
-        /* ポップアップ表示 (各キャラの頭上に表示するためのコンテナ) */
-        .status-container {
-            position: absolute; width: 200px; height: 50px; top: -10%; left: 50%;
-            transform: translateX(-50%); display: flex; justify-content: center; align-items: center;
-            pointer-events: none; z-index: 110;
-        }
-        .status-pop {
-            font-weight: 900; text-shadow: 2px 2px 0 #000;
-            opacity: 0; transform: scale(0.5); transition: 0.2s;
-            white-space: nowrap;
-        }
-        .miss-pop { color: #ffff00; font-size: 2.5rem; }
-        .penalty-pop { color: #ff0000; font-size: 2.5rem; }
-
-        /* ハンマー */
         .hammer { position: absolute; display: none; z-index: 50; pointer-events: none; }
         @keyframes throwHammerP1 { 0% { top: -20%; left: 20%; transform: rotate(0); } 100% { top: 45%; left: 55%; transform: rotate(720deg); } }
         @keyframes throwHammerP2 { 0% { top: -20%; right: 20%; transform: scaleX(-1) rotate(0); } 100% { top: 45%; right: 55%; transform: scaleX(-1) rotate(-720deg); } }
@@ -118,9 +135,13 @@
 
     <div id="game-world">
         <div id="hammer-info">
-            <div id="hammer-dmg-text" style="color:#ff4d4d; font-size:1.5rem; font-weight:900;">1</div>
-            <img id="next-hammer-img" src="hammer1.svg" style="width:30px; height:30px;">
+            <div class="info-label">READY HAMMER</div>
+            <div class="current-box">
+                <img id="ui-hammer-img" src="hammer1.svg" style="width:40px; height:40px;">
+                <div id="ui-hammer-dmg" style="color:#ff4d4d; font-size:2rem; font-weight:900;">1</div>
+            </div>
         </div>
+
         <div id="start-signal">READY?</div>
         
         <div id="card-p1" class="placard">?</div>
@@ -162,13 +183,12 @@
         let p1 = { life: 5, num: 0, acted: false };
         let p2 = { life: 5, num: 0, acted: false };
         let gameState = 'IDLE'; 
-        let currentHammerIdx = 0; // インデックスで管理して同期ミスを防ぐ
-        let nextHammerIdx = Math.floor(Math.random() * 3);
+        let currentIdx = 0;
 
         function init() {
-            updateUI();
+            updateLifeUI();
             resetPositions();
-            syncHammerUI(); // 初期表示を同期
+            pickNextHammer();
             gameState = 'SIGNAL';
             setTimeout(() => showSignal("READY?", () => {
                 setTimeout(() => showSignal("GO!", startRound), 800);
@@ -182,35 +202,27 @@
         }
 
         function resetPositions() {
-            document.getElementById('char-p1').style.left = '-70%';
-            document.getElementById('char-p2').style.right = '-70%';
+            const c1 = document.getElementById('char-p1');
+            const c2 = document.getElementById('char-p2');
+            c1.style.left = '-70%'; c1.classList.remove('shake-p1');
+            c2.style.right = '-70%'; c2.classList.remove('shake-p2');
             p1.acted = false; p2.acted = false;
         }
 
-        // ハンマーの情報と表示を一括で同期させる最重要関数
-        function syncHammerUI() {
-            currentHammerIdx = nextHammerIdx;
-            nextHammerIdx = Math.floor(Math.random() * 3);
-            
-            const cur = HAMMER_DATA[currentHammerIdx];
-            const nxt = HAMMER_DATA[nextHammerIdx];
-
-            // 中央のダメージ数値
-            document.getElementById('hammer-dmg-text').textContent = cur.damage;
-            // 中央の予告画像
-            document.getElementById('next-hammer-img').src = nxt.file;
-            // プレイヤーが投げる用の不可視ハンマー画像
-            document.getElementById('h-img-p1').src = cur.file;
-            document.getElementById('h-img-p2').src = cur.file;
-            // サイズも事前にセット
-            document.getElementById('hammer-p1').style.width = cur.size;
-            document.getElementById('hammer-p2').style.width = cur.size;
+        function pickNextHammer() {
+            currentIdx = Math.floor(Math.random() * 3);
+            const data = HAMMER_DATA[currentIdx];
+            document.getElementById('ui-hammer-img').src = data.file;
+            document.getElementById('ui-hammer-dmg').textContent = data.damage;
+            document.getElementById('h-img-p1').src = data.file;
+            document.getElementById('h-img-p2').src = data.file;
+            document.getElementById('hammer-p1').style.width = data.size;
+            document.getElementById('hammer-p2').style.width = data.size;
         }
 
         function startRound() {
             if (p1.life <= 0 || p2.life <= 0) return;
             gameState = 'ENTERING';
-            
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             document.getElementById('char-p1').style.left = '5%';
             document.getElementById('char-p2').style.right = '5%';
@@ -231,10 +243,9 @@
             const me = (pid === 1) ? p1 : p2;
             if (me.acted || gameState === 'OVER') return;
 
-            // おてつき判定
             if (gameState === 'SIGNAL' || gameState === 'ENTERING') {
                 me.acted = true;
-                showStatus(pid, "おてつき", "penalty-pop");
+                shakeAndShow(pid, "おてつき", "penalty-pop");
                 damage(pid, 1, true); 
                 return;
             }
@@ -246,7 +257,7 @@
             const isCorrect = (action === 'HIT' && amIBigger) || (action === 'DODGE' && !amIBigger);
 
             if (!isCorrect) {
-                showStatus(pid, "MISS", "miss-pop");
+                shakeAndShow(pid, "MISS", "miss-pop");
                 damage(pid, 1, true); 
                 return;
             }
@@ -260,25 +271,31 @@
                 setTimeout(() => {
                     hammerEl.style.display = 'none';
                     hammerEl.classList.remove(pid === 1 ? 'throwing-p1' : 'throwing-p2');
-                    damage(pid === 1 ? 2 : 1, HAMMER_DATA[currentHammerIdx].damage, false);
+                    damage(pid === 1 ? 2 : 1, HAMMER_DATA[currentIdx].damage, false);
                 }, 350);
             } else {
                 const prop = (pid === 1) ? 'left' : 'right';
                 document.getElementById('char-p' + pid).style[prop] = '-25%';
                 setTimeout(() => {
                     resetPositions();
-                    syncHammerUI(); // 次のハンマーを準備
+                    pickNextHammer();
                     startRound();
                 }, 400);
             }
         }
 
-        function showStatus(pid, text, className) {
+        function shakeAndShow(pid, text, className) {
+            const char = document.getElementById('char-p' + pid);
+            const shakeClass = pid === 1 ? 'shake-p1' : 'shake-p2';
+            char.classList.remove(shakeClass);
+            void char.offsetWidth;
+            char.classList.add(shakeClass);
+
             const el = document.getElementById('pop-p' + pid);
             el.textContent = text;
             el.className = "status-pop " + className;
             el.style.opacity = '1';
-            el.style.transform = 'scale(1.2)';
+            el.style.transform = (pid === 2 ? 'scaleX(1) ' : '') + 'scale(1.2)'; // 2Pは反転打ち消しを考慮
             setTimeout(() => {
                 el.style.opacity = '0';
                 el.style.transform = 'scale(0.5)';
@@ -294,7 +311,7 @@
                 if (!isStay) document.getElementById('char-p2').style.right = '-100%';
             }
             
-            updateUI();
+            updateLifeUI();
 
             if (p1.life <= 0 || p2.life <= 0) {
                 gameState = 'OVER';
@@ -305,13 +322,13 @@
             } else {
                 setTimeout(() => {
                     resetPositions();
-                    syncHammerUI(); // 決着後、次のラウンド用にハンマーを確実に同期
+                    pickNextHammer();
                     startRound();
                 }, 1000);
             }
         }
 
-        function updateUI() {
+        function updateLifeUI() {
             document.getElementById('life-p1').textContent = "❤".repeat(Math.max(0, p1.life));
             document.getElementById('life-p2').textContent = "❤".repeat(Math.max(0, p2.life));
         }
