@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Landscape Arena</title>
+    <title>Number Hammer: Giant Arena</title>
     <style>
         :root {
-            --side-width: 70px; /* 横向きなので少し広めに */
+            --side-width: 70px;
             --primary-bg: #111;
         }
         body {
@@ -58,18 +58,19 @@
             background: #fff; border: 4px solid #222; border-radius: 10px;
             display: flex; justify-content: center; align-items: center;
             font-size: 4rem; font-weight: 900; 
-            top: 15%; z-index: 20; opacity: 0; transform: translateY(20px);
+            top: 15%; /* キャラクター上部に少し重なる位置 */
+            z-index: 20; opacity: 0; transform: translateY(20px);
             transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .placard.active { opacity: 1; transform: translateY(0); }
-        #card-p1 { left: 20%; } /* 少し外側に配置 */
+        #card-p1 { left: 20%; } 
         #card-p2 { right: 20%; }
 
-        /* キャラクター（中央寄り：z-index 30） */
+        /* キャラクター（中央寄り＆2倍サイズ：z-index 30） */
         .character { 
             position: absolute; 
-            bottom: 5%; 
-            width: 25vh; height: 25vh; /* 横持ちなので高さ(vh)基準でサイズ調整 */
+            bottom: -5%; /* 足元が少し画面外に出るくらいで調整 */
+            width: 50vh; height: 50vh; /* 2倍に拡大 */
             z-index: 30;
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
