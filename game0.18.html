@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Balanced Edition</title>
+    <title>Number Hammer: Soft Background</title>
     <style>
         :root { --side-width: 80px; }
         body {
@@ -31,15 +31,27 @@
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
 
-        /* ゲームメインエリア */
+        /* ゲームエリア：背景透明度のための設定 */
         #game-world {
             flex-grow: 1; position: relative;
-            background: #87ceeb;
-            background-image: linear-gradient(to bottom, rgba(135,206,235,0.7), rgba(240,249,255,0.8));
+            background-color: #87ceeb; /* 土台となる青色 */
             overflow: hidden;
         }
 
-        /* 中央ハンマー情報 */
+        /* 背景画像専用のレイヤー（透明度70%） */
+        #game-world::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('cloud_bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.7; /* ここで透明度を調整 */
+            z-index: 0;   /* 一番後ろに配置 */
+        }
+
+        /* 中央ハンマー情報（背景より上にくるよう z-index を調整） */
         #hammer-info {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.85); color: white; padding: 10px 30px;
@@ -60,13 +72,12 @@
         }
         @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         
-        /* 1P震動（通常） */
+        /* 震動演出 */
         @keyframes shake1P {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-15px); }
             40%, 80% { transform: translateX(15px); }
         }
-        /* 2P震動（反転維持） */
         @keyframes shake2P {
             0%, 100% { transform: scaleX(-1) translateX(0); }
             20%, 60% { transform: scaleX(-1) translateX(-15px); }
@@ -77,8 +88,6 @@
 
         #char-p1 { left: -70%; }
         #char-p2 { right: -70%; transform: scaleX(-1); }
-
-        /* 2P側の文字反転打ち消し */
         #char-p2 .status-container { transform: translateX(-50%) scaleX(-1); }
 
         .status-container {
@@ -94,7 +103,6 @@
         .miss-pop { color: #ffff00; font-size: 3rem; }
         .penalty-pop { color: #ff0000; font-size: 3rem; }
 
-        /* 数字プラカード */
         .placard {
             position: absolute; width: 15vw; height: 22vw; max-width: 110px; max-height: 160px;
             background: #fff; border: 5px solid #222; border-radius: 15px;
@@ -176,171 +184,25 @@
     </div>
 
     <script>
+        // ... (以下 JavaScript は前回と同じです)
         const HAMMER_DATA = [
             { damage: 1, file: "hammer1.svg", size: "100px" },
             { damage: 2, file: "hammer2.svg", size: "130px" },
             { damage: 3, file: "hammer3.svg", size: "170px" }
         ];
-
         let p1 = { life: 5, num: 0, acted: false };
         let p2 = { life: 5, num: 0, acted: false };
         let gameState = 'IDLE'; 
         let currentIdx = 0;
-
-        function init() {
-            updateLifeUI();
-            resetPositions();
-            pickNextHammer();
-            gameState = 'SIGNAL';
-            setTimeout(() => showSignal("READY?", () => {
-                setTimeout(() => showSignal("GO!", startRound), 800);
-            }), 500);
-        }
-
-        function showSignal(txt, callback) {
-            const el = document.getElementById('start-signal');
-            el.textContent = txt; el.style.opacity = '1';
-            setTimeout(() => { el.style.opacity = '0'; if(callback) callback(); }, 600);
-        }
-
-        function resetPositions() {
-            const c1 = document.getElementById('char-p1');
-            const c2 = document.getElementById('char-p2');
-            c1.style.left = '-70%'; c1.classList.remove('shake-p1');
-            c2.style.right = '-70%'; c2.classList.remove('shake-p2');
-            p1.acted = false; p2.acted = false;
-        }
-
-        function pickNextHammer() {
-            // 出現確率の重み付け： 1(60%) / 2(30%) / 3(10%)
-            const rand = Math.random() * 100;
-            if (rand < 60) currentIdx = 0;
-            else if (rand < 90) currentIdx = 1;
-            else currentIdx = 2;
-
-            const data = HAMMER_DATA[currentIdx];
-            document.getElementById('ui-hammer-img').src = data.file;
-            document.getElementById('ui-hammer-dmg').textContent = data.damage;
-            document.getElementById('h-img-p1').src = data.file;
-            document.getElementById('h-img-p2').src = data.file;
-            document.getElementById('hammer-p1').style.width = data.size;
-            document.getElementById('hammer-p2').style.width = data.size;
-        }
-
-        function startRound() {
-            if (p1.life <= 0 || p2.life <= 0) return;
-            gameState = 'ENTERING';
-            document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
-            document.getElementById('char-p1').style.left = '5%';
-            document.getElementById('char-p2').style.right = '5%';
-
-            setTimeout(() => {
-                if (gameState !== 'ENTERING') return; 
-                gameState = 'BATTLE';
-                p1.num = Math.floor(Math.random() * 100);
-                p2.num = Math.floor(Math.random() * 100);
-                if(p1.num === p2.num) p1.num++;
-                document.getElementById('card-p1').textContent = p1.num;
-                document.getElementById('card-p2').textContent = p2.num;
-                document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
-            }, 700);
-        }
-
-        function handleAction(pid, action) {
-            const me = (pid === 1) ? p1 : p2;
-            if (me.acted || gameState === 'OVER') return;
-
-            // おてつき判定
-            if (gameState === 'SIGNAL' || gameState === 'ENTERING') {
-                me.acted = true;
-                shakeAndShow(pid, "おてつき", "penalty-pop");
-                damage(pid, 1, true); 
-                return;
-            }
-
-            if (gameState !== 'BATTLE') return;
-
-            me.acted = true;
-            const amIBigger = (pid === 1) ? (p1.num > p2.num) : (p2.num > p1.num);
-            const isCorrect = (action === 'HIT' && amIBigger) || (action === 'DODGE' && !amIBigger);
-
-            if (!isCorrect) {
-                shakeAndShow(pid, "MISS", "miss-pop");
-                damage(pid, 1, true); 
-                return;
-            }
-
-            gameState = 'RESOLVING';
-            if (action === 'HIT') {
-                const hammerEl = document.getElementById('hammer-p' + pid);
-                hammerEl.style.display = 'block';
-                hammerEl.classList.add(pid === 1 ? 'throwing-p1' : 'throwing-p2');
-                
-                setTimeout(() => {
-                    hammerEl.style.display = 'none';
-                    hammerEl.classList.remove(pid === 1 ? 'throwing-p1' : 'throwing-p2');
-                    damage(pid === 1 ? 2 : 1, HAMMER_DATA[currentIdx].damage, false);
-                }, 350);
-            } else {
-                const prop = (pid === 1) ? 'left' : 'right';
-                document.getElementById('char-p' + pid).style[prop] = '-25%';
-                setTimeout(() => {
-                    resetPositions();
-                    pickNextHammer();
-                    startRound();
-                }, 400);
-            }
-        }
-
-        function shakeAndShow(pid, text, className) {
-            const char = document.getElementById('char-p' + pid);
-            const shakeClass = pid === 1 ? 'shake-p1' : 'shake-p2';
-            char.classList.remove(shakeClass);
-            void char.offsetWidth;
-            char.classList.add(shakeClass);
-
-            const el = document.getElementById('pop-p' + pid);
-            el.textContent = text;
-            el.className = "status-pop " + className;
-            el.style.opacity = '1';
-            el.style.transform = 'scale(1.2)';
-            setTimeout(() => {
-                el.style.opacity = '0';
-                el.style.transform = 'scale(0.5)';
-            }, 800);
-        }
-
-        function damage(pid, amount, isStay) {
-            if (pid === 1) {
-                p1.life -= amount;
-                if (!isStay) document.getElementById('char-p1').style.left = '-100%';
-            } else {
-                p2.life -= amount;
-                if (!isStay) document.getElementById('char-p2').style.right = '-100%';
-            }
-            
-            updateLifeUI();
-
-            if (p1.life <= 0 || p2.life <= 0) {
-                gameState = 'OVER';
-                setTimeout(() => {
-                    document.getElementById('winner-text').textContent = p1.life <= 0 ? "P2 WIN!" : "P1 WIN!";
-                    document.getElementById('message-overlay').style.display = 'flex';
-                }, 600);
-            } else {
-                setTimeout(() => {
-                    resetPositions();
-                    pickNextHammer();
-                    startRound();
-                }, 1000);
-            }
-        }
-
-        function updateLifeUI() {
-            document.getElementById('life-p1').textContent = "❤".repeat(Math.max(0, p1.life));
-            document.getElementById('life-p2').textContent = "❤".repeat(Math.max(0, p2.life));
-        }
-
+        function init() { updateLifeUI(); resetPositions(); pickNextHammer(); gameState = 'SIGNAL'; setTimeout(() => showSignal("READY?", () => { setTimeout(() => showSignal("GO!", startRound), 800); }), 500); }
+        function showSignal(txt, callback) { const el = document.getElementById('start-signal'); el.textContent = txt; el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0'; if(callback) callback(); }, 600); }
+        function resetPositions() { const c1 = document.getElementById('char-p1'); const c2 = document.getElementById('char-p2'); c1.style.left = '-70%'; c1.classList.remove('shake-p1'); c2.style.right = '-70%'; c2.classList.remove('shake-p2'); p1.acted = false; p2.acted = false; }
+        function pickNextHammer() { const rand = Math.random() * 100; if (rand < 60) currentIdx = 0; else if (rand < 90) currentIdx = 1; else currentIdx = 2; const data = HAMMER_DATA[currentIdx]; document.getElementById('ui-hammer-img').src = data.file; document.getElementById('ui-hammer-dmg').textContent = data.damage; document.getElementById('h-img-p1').src = data.file; document.getElementById('h-img-p2').src = data.file; document.getElementById('hammer-p1').style.width = data.size; document.getElementById('hammer-p2').style.width = data.size; }
+        function startRound() { if (p1.life <= 0 || p2.life <= 0) return; gameState = 'ENTERING'; document.querySelectorAll('.placard').forEach(p => p.classList.remove('active')); document.getElementById('char-p1').style.left = '5%'; document.getElementById('char-p2').style.right = '5%'; setTimeout(() => { if (gameState !== 'ENTERING') return; gameState = 'BATTLE'; p1.num = Math.floor(Math.random() * 100); p2.num = Math.floor(Math.random() * 100); if(p1.num === p2.num) p1.num++; document.getElementById('card-p1').textContent = p1.num; document.getElementById('card-p2').textContent = p2.num; document.querySelectorAll('.placard').forEach(p => p.classList.add('active')); }, 700); }
+        function handleAction(pid, action) { const me = (pid === 1) ? p1 : p2; if (me.acted || gameState === 'OVER') return; if (gameState === 'SIGNAL' || gameState === 'ENTERING') { me.acted = true; shakeAndShow(pid, "おてつき", "penalty-pop"); damage(pid, 1, true); return; } if (gameState !== 'BATTLE') return; me.acted = true; const amIBigger = (pid === 1) ? (p1.num > p2.num) : (p2.num > p1.num); const isCorrect = (action === 'HIT' && amIBigger) || (action === 'DODGE' && !amIBigger); if (!isCorrect) { shakeAndShow(pid, "MISS", "miss-pop"); damage(pid, 1, true); return; } gameState = 'RESOLVING'; if (action === 'HIT') { const hammerEl = document.getElementById('hammer-p' + pid); hammerEl.style.display = 'block'; hammerEl.classList.add(pid === 1 ? 'throwing-p1' : 'throwing-p2'); setTimeout(() => { hammerEl.style.display = 'none'; hammerEl.classList.remove(pid === 1 ? 'throwing-p1' : 'throwing-p2'); damage(pid === 1 ? 2 : 1, HAMMER_DATA[currentIdx].damage, false); }, 350); } else { const prop = (pid === 1) ? 'left' : 'right'; document.getElementById('char-p' + pid).style[prop] = '-25%'; setTimeout(() => { resetPositions(); pickNextHammer(); startRound(); }, 400); } }
+        function shakeAndShow(pid, text, className) { const char = document.getElementById('char-p' + pid); const shakeClass = pid === 1 ? 'shake-p1' : 'shake-p2'; char.classList.remove(shakeClass); void char.offsetWidth; char.classList.add(shakeClass); const el = document.getElementById('pop-p' + pid); el.textContent = text; el.className = "status-pop " + className; el.style.opacity = '1'; el.style.transform = 'scale(1.2)'; setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'scale(0.5)'; }, 800); }
+        function damage(pid, amount, isStay) { if (pid === 1) { p1.life -= amount; if (!isStay) document.getElementById('char-p1').style.left = '-100%'; } else { p2.life -= amount; if (!isStay) document.getElementById('char-p2').style.right = '-100%'; } updateLifeUI(); if (p1.life <= 0 || p2.life <= 0) { gameState = 'OVER'; setTimeout(() => { document.getElementById('winner-text').textContent = p1.life <= 0 ? "P2 WIN!" : "P1 WIN!"; document.getElementById('message-overlay').style.display = 'flex'; }, 600); } else { setTimeout(() => { resetPositions(); pickNextHammer(); startRound(); }, 1000); } }
+        function updateLifeUI() { document.getElementById('life-p1').textContent = "❤".repeat(Math.max(0, p1.life)); document.getElementById('life-p2').textContent = "❤".repeat(Math.max(0, p2.life)); }
         window.addEventListener('load', init);
     </script>
 </body>
