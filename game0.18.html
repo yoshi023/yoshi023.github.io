@@ -3,115 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Centered Edition</title>
+    <title>Number Hammer: Landscape Arena</title>
     <style>
         :root {
-            --side-width: 55px;
+            --side-width: 70px; /* 横向きなので少し広めに */
             --primary-bg: #111;
         }
         body {
             margin: 0; padding: 0; background-color: var(--primary-bg);
             font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-            overflow: hidden; touch-action: none; display: flex; height: 100dvh;
+            overflow: hidden; touch-action: none; display: flex; height: 100vh;
         }
 
-        /* プレイヤー操作パネル */
+        /* プレイヤーサイド（左右両端） */
         .player-side {
             width: var(--side-width); display: flex; flex-direction: column;
-            background: #1a1a1a; z-index: 100; flex-shrink: 0;
-            border-right: 1px solid #333; border-left: 1px solid #333;
+            background: rgba(20, 20, 20, 0.9); z-index: 100; flex-shrink: 0;
         }
-        .player-ui { height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; }
-        .life { color: #ff4444; font-size: 0.8rem; line-height: 1.1; text-align: center; font-weight: bold; }
+        .player-ui { height: 50px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; }
+        .life { color: #ff4444; font-size: 1rem; line-height: 1.2; text-align: center; font-weight: bold; }
 
-        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 4px; }
+        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding: 10px 5px; }
         .btn {
-            flex: 1; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: bold; color: white;
-            box-shadow: 0 3px 0 rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+            flex: 1; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: bold; color: white;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
             writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s;
         }
         .btn:active { transform: translateY(2px); box-shadow: none; }
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
 
-        /* 中央バトルエリア */
+        /* 中央の広大なバトルエリア */
         #game-world {
             flex-grow: 1; position: relative;
-            background: linear-gradient(to bottom, #a2d2ff 0%, #ffffff 100%);
+            background: linear-gradient(to bottom, #87ceeb 0%, #f0f9ff 100%);
             overflow: hidden;
         }
 
-        /* ハンマー情報パネル */
+        /* ハンマー情報（中央上部） */
         #hammer-info {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85); color: white; padding: 4px 12px;
-            border-radius: 30px; border: 1.5px solid #ffd700; z-index: 100;
-            width: 80%; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.8); color: white; padding: 5px 20px;
+            border-radius: 40px; border: 2px solid #ffd700; z-index: 100;
+            display: flex; gap: 20px; align-items: center;
         }
-        .now-box { font-size: 0.6rem; color: #ddd; }
-        #hammer-dmg-text { font-size: 1rem; color: #ff4d4d; font-weight: 800; margin-left: 5px; }
-        #next-hammer-img { width: 24px; height: 24px; object-fit: contain; }
+        .now-box { font-size: 0.9rem; font-weight: bold; }
+        #hammer-dmg-text { color: #ff4d4d; font-size: 1.2rem; }
+        #next-hammer-img { width: 30px; height: 30px; object-fit: contain; }
 
-        /* 数字パネル (奥: z-index 20) */
+        /* 数字パネル（キャラクターの背後：z-index 20） */
         .placard {
             position: absolute; 
-            width: clamp(80px, 28vw, 130px); 
-            height: clamp(110px, 40vw, 180px);
-            background: #fff; border: 4px solid #222; border-radius: 12px;
+            width: 12vw; height: 18vw; max-width: 100px; max-height: 150px;
+            background: #fff; border: 4px solid #222; border-radius: 10px;
             display: flex; justify-content: center; align-items: center;
-            font-size: clamp(3rem, 10vw, 5.5rem); font-weight: 900; 
-            top: 20%; z-index: 20; opacity: 0; transform: translateY(30px);
+            font-size: 4rem; font-weight: 900; 
+            top: 15%; z-index: 20; opacity: 0; transform: translateY(20px);
             transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .placard.active { opacity: 1; transform: translateY(0); }
-        #card-p1 { left: 8%; }
-        #card-p2 { right: 8%; }
+        #card-p1 { left: 20%; } /* 少し外側に配置 */
+        #card-p2 { right: 20%; }
 
-        /* キャラクター (手前: z-index 30) - 中央寄りに調整 */
+        /* キャラクター（中央寄り：z-index 30） */
         .character { 
             position: absolute; 
             bottom: 5%; 
-            width: clamp(110px, 35vw, 200px); /* 少し小さく */
-            height: clamp(110px, 35vw, 200px); 
+            width: 25vh; height: 25vh; /* 横持ちなので高さ(vh)基準でサイズ調整 */
             z-index: 30;
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .character img { width: 100%; height: 100%; object-fit: contain; animation: floating 2.5s ease-in-out infinite; }
-        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .character img { width: 100%; height: 100%; object-fit: contain; animation: floating 2s ease-in-out infinite; }
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
         
-        #char-p1 { left: -70%; }
-        #char-p2 { right: -70%; transform: scaleX(-1); }
+        #char-p1 { left: -50%; } /* 待機時は画面外 */
+        #char-p2 { right: -50%; transform: scaleX(-1); }
 
-        /* ハンマー */
+        /* ハンマー（最前面） */
         .hammer { position: absolute; display: none; z-index: 50; pointer-events: none; }
         .hammer img { width: 100%; height: 100%; object-fit: contain; }
         
         @keyframes throwHammerP1 {
-            0% { top: -10%; left: 15%; transform: rotate(0); opacity: 1; }
-            100% { top: 60%; left: 45%; transform: rotate(720deg); opacity: 1; }
+            0% { top: -20%; left: 30%; transform: rotate(0); opacity: 1; }
+            100% { top: 50%; left: 55%; transform: rotate(720deg); opacity: 1; }
         }
         @keyframes throwHammerP2 {
-            0% { top: -10%; right: 15%; transform: scaleX(-1) rotate(0); opacity: 1; }
-            100% { top: 60%; right: 45%; transform: scaleX(-1) rotate(-720deg); opacity: 1; }
+            0% { top: -20%; right: 30%; transform: scaleX(-1) rotate(0); opacity: 1; }
+            100% { top: 50%; right: 55%; transform: scaleX(-1) rotate(-720deg); opacity: 1; }
         }
-        .throwing-p1 { animation: throwHammerP1 0.45s ease-in forwards; }
-        .throwing-p2 { animation: throwHammerP2 0.45s ease-in forwards; }
+        .throwing-p1 { animation: throwHammerP1 0.4s ease-in forwards; }
+        .throwing-p2 { animation: throwHammerP2 0.4s ease-in forwards; }
 
-        .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 60; }
-        @keyframes explode {
-            0% { transform: translate(0, 0) scale(1); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
-        }
+        .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 60; }
 
         #start-signal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #fff; font-size: 2.5rem; font-weight: 900; text-shadow: 0 0 15px #000; z-index: 500; opacity: 0;
-            pointer-events: none;
+            color: #fff; font-size: 4rem; font-weight: 900; text-shadow: 0 0 20px #000; z-index: 500; opacity: 0;
         }
 
         #message-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: none; flex-direction: column;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
             justify-content: center; align-items: center; color: #fff; z-index: 1000;
         }
     </style>
@@ -128,9 +120,9 @@
 
     <div id="game-world">
         <div id="hammer-info">
-            <div class="now-box">NOW:<span id="hammer-dmg-text">1</span></div>
-            <div style="display:flex; align-items:center; gap:4px">
-                <span style="font-size:0.5rem; color:#aaa">NEXT</span>
+            <div class="now-box">DAM: <span id="hammer-dmg-text">1</span></div>
+            <div style="display:flex; align-items:center; gap:8px">
+                <span style="font-size:0.7rem; color:#aaa">NEXT</span>
                 <img id="next-hammer-img" src="hammer1.svg">
             </div>
         </div>
@@ -156,21 +148,22 @@
     </div>
 
     <div id="message-overlay">
-        <div id="winner-text" style="font-size:2rem; font-weight:900; margin-bottom:20px;">P1 WIN!</div>
-        <button onclick="resetGame()" style="padding:12px 36px; font-size:1.2rem; background:#2ed573; border:none; border-radius:30px; color:#fff; font-weight:bold; cursor:pointer;">REMATCH</button>
+        <div id="winner-text" style="font-size:3rem; font-weight:900; margin-bottom:20px;">P1 WIN!</div>
+        <button onclick="resetGame()" style="padding:15px 50px; font-size:1.5rem; background:#2ed573; border:none; border-radius:40px; color:#fff; font-weight:bold; cursor:pointer;">REMATCH</button>
     </div>
 
     <script>
         const HAMMER_DATA = [
-            { name: "通常", damage: 1, file: "hammer1.svg", size: "70px", color: "#fff", weight: 0.7 },
-            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "90px", color: "#ffa500", weight: 0.2 },
-            { name: "強い", damage: 3, file: "hammer3.svg", size: "115px", color: "#ff0000", weight: 0.1 }
+            { name: "通常", damage: 1, file: "hammer1.svg", size: "80px", color: "#fff", weight: 0.7 },
+            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "110px", color: "#ffa500", weight: 0.2 },
+            { name: "強い", damage: 3, file: "hammer3.svg", size: "140px", color: "#ff0000", weight: 0.1 }
         ];
 
         let p1 = { life: 5, num: 0 }, p2 = { life: 5, num: 0 };
         let gameState = 'IDLE', currentHammer = null, nextHammer = null;
 
-        const CHAR_POS = '12%'; // 中央への寄せ具合を12%に設定
+        // キャラクターの中央寄り位置（中央からの距離）
+        const CENTER_POS = '35%'; 
 
         function init() {
             p1.life = 5; p2.life = 5; updateUI();
@@ -187,8 +180,8 @@
         }
 
         function resetPositions() {
-            document.getElementById('char-p1').style.left = '-75%';
-            document.getElementById('char-p2').style.right = '-75%';
+            document.getElementById('char-p1').style.left = '-50%';
+            document.getElementById('char-p2').style.right = '-50%';
         }
 
         function updateHammerSelection() {
@@ -208,8 +201,8 @@
             if (p1.life <= 0 || p2.life <= 0) return;
             gameState = 'ENTERING'; updateHammerSelection();
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
-            document.getElementById('char-p1').style.left = CHAR_POS;
-            document.getElementById('char-p2').style.right = CHAR_POS;
+            document.getElementById('char-p1').style.left = CENTER_POS;
+            document.getElementById('char-p2').style.right = CENTER_POS;
             setTimeout(() => {
                 if (gameState !== 'ENTERING') return;
                 gameState = 'BATTLE';
@@ -217,7 +210,7 @@
                 document.getElementById('card-p1').textContent = p1.num;
                 document.getElementById('card-p2').textContent = p2.num;
                 document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
-            }, 1000);
+            }, 800);
         }
 
         function handleAction(pid, action) {
@@ -233,29 +226,29 @@
                     h.style.display = 'none'; h.classList.remove(isP1 ? 'throwing-p1' : 'throwing-p2');
                     if (amIBigger) {
                         const r = document.getElementById('game-world').getBoundingClientRect();
-                        createFireworks(r.width/2, r.height/2 + 30, currentHammer.color);
+                        createFireworks(r.width/2, r.height/2, currentHammer.color);
                         damage(isP1 ? 2 : 1, currentHammer.damage);
                     } else { damage(pid, 1); }
-                }, 450);
+                }, 400);
             } else {
                 const prop = (pid === 1) ? 'left' : 'right';
-                document.getElementById('char-p'+pid).style[prop] = '-5%'; 
+                document.getElementById('char-p'+pid).style[prop] = '20%'; // 少し後ろへ回避
                 setTimeout(() => {
-                    document.getElementById('char-p'+pid).style[prop] = CHAR_POS;
+                    document.getElementById('char-p'+pid).style[prop] = CENTER_POS;
                     if (!amIBigger) startRound();
                     else damage(pid, 1);
-                }, 400);
+                }, 300);
             }
         }
 
         function createFireworks(x, y, color) {
             const world = document.getElementById('game-world');
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 20; i++) {
                 const p = document.createElement('div');
                 p.className = 'particle'; p.style.backgroundColor = color;
                 p.style.left = x + 'px'; p.style.top = y + 'px';
-                p.style.setProperty('--tx', (Math.random() - 0.5) * 180 + 'px');
-                p.style.setProperty('--ty', (Math.random() - 0.5) * 180 + 'px');
+                p.style.setProperty('--tx', (Math.random() - 0.5) * 250 + 'px');
+                p.style.setProperty('--ty', (Math.random() - 0.5) * 250 + 'px');
                 p.style.animation = `explode 0.6s ease-out forwards`;
                 world.appendChild(p); setTimeout(() => p.remove(), 600);
             }
@@ -270,12 +263,12 @@
                     document.getElementById('winner-text').textContent = (p1.life <= 0) ? "P2 WIN!" : "P1 WIN!";
                     document.getElementById('message-overlay').style.display = 'flex';
                 }, 800);
-            } else setTimeout(startRound, 1500);
+            } else setTimeout(startRound, 1200);
         }
 
         function updateUI() {
-            document.getElementById('life-p1').innerHTML = "❤".repeat(Math.max(0, p1.life)).split('').join('<br>');
-            document.getElementById('life-p2').innerHTML = "❤".repeat(Math.max(0, p2.life)).split('').join('<br>');
+            document.getElementById('life-p1').innerHTML = "❤".repeat(Math.max(0, p1.life));
+            document.getElementById('life-p2').innerHTML = "❤".repeat(Math.max(0, p2.life));
         }
 
         function resetGame() { init(); }
