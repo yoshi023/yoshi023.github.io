@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Giant Arena</title>
+    <title>Number Hammer: Landscape Pro</title>
     <style>
         :root {
             --side-width: 70px;
@@ -15,15 +15,16 @@
             overflow: hidden; touch-action: none; display: flex; height: 100vh;
         }
 
-        /* プレイヤーサイド（左右両端） */
+        /* プレイヤーサイド（操作パネル） */
         .player-side {
             width: var(--side-width); display: flex; flex-direction: column;
-            background: rgba(20, 20, 20, 0.9); z-index: 100; flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.8); z-index: 100; flex-shrink: 0;
+            border-right: 1px solid #444; border-left: 1px solid #444;
         }
         .player-ui { height: 50px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; }
-        .life { color: #ff4444; font-size: 1rem; line-height: 1.2; text-align: center; font-weight: bold; }
+        .life { color: #ff4444; font-size: 1.1rem; text-align: center; font-weight: bold; }
 
-        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding: 10px 5px; }
+        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 12px; padding: 10px 6px; }
         .btn {
             flex: 1; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: bold; color: white;
             box-shadow: 0 4px 0 rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
@@ -33,78 +34,84 @@
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
 
-        /* 中央の広大なバトルエリア */
+        /* バトルエリア（背景復活） */
         #game-world {
             flex-grow: 1; position: relative;
-            background: linear-gradient(to bottom, #87ceeb 0%, #f0f9ff 100%);
+            background: #87ceeb;
+            background-image: linear-gradient(to bottom, rgba(135,206,235,0.8), rgba(240,249,255,0.9)), 
+                              url('cloud_bg.png'); /* 背景画像を適用 */
+            background-size: cover;
+            background-position: center;
             overflow: hidden;
         }
 
-        /* ハンマー情報（中央上部） */
+        /* ハンマー情報 */
         #hammer-info {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 5px 20px;
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 6px 24px;
             border-radius: 40px; border: 2px solid #ffd700; z-index: 100;
-            display: flex; gap: 20px; align-items: center;
+            display: flex; gap: 25px; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .now-box { font-size: 0.9rem; font-weight: bold; }
-        #hammer-dmg-text { color: #ff4d4d; font-size: 1.2rem; }
-        #next-hammer-img { width: 30px; height: 30px; object-fit: contain; }
+        .now-box { font-size: 0.9rem; font-weight: bold; letter-spacing: 1px; }
+        #hammer-dmg-text { color: #ff4d4d; font-size: 1.3rem; font-weight: 900; }
+        #next-hammer-img { width: 32px; height: 32px; object-fit: contain; }
 
-        /* 数字パネル（キャラクターの背後：z-index 20） */
+        /* プラカード（左右に配置：z-index 20） */
         .placard {
             position: absolute; 
-            width: 12vw; height: 18vw; max-width: 100px; max-height: 150px;
-            background: #fff; border: 4px solid #222; border-radius: 10px;
+            width: 15vw; height: 22vw; max-width: 120px; max-height: 180px;
+            background: #fff; border: 5px solid #222; border-radius: 15px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 4rem; font-weight: 900; 
-            top: 15%; /* キャラクター上部に少し重なる位置 */
-            z-index: 20; opacity: 0; transform: translateY(20px);
+            font-size: 4.5rem; font-weight: 900; 
+            top: 15%; z-index: 20; opacity: 0; transform: translateY(30px);
             transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         .placard.active { opacity: 1; transform: translateY(0); }
-        #card-p1 { left: 20%; } 
-        #card-p2 { right: 20%; }
+        #card-p1 { left: 10%; } /* 左右に広げる */
+        #card-p2 { right: 10%; }
 
-        /* キャラクター（中央寄り＆2倍サイズ：z-index 30） */
+        /* キャラクター（左右に配置 ＆ 2倍サイズ：z-index 30） */
         .character { 
             position: absolute; 
-            bottom: -5%; /* 足元が少し画面外に出るくらいで調整 */
-            width: 50vh; height: 50vh; /* 2倍に拡大 */
+            bottom: -2%; 
+            width: 55vh; height: 55vh; /* 迫力のサイズ */
             z-index: 30;
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
         }
-        .character img { width: 100%; height: 100%; object-fit: contain; animation: floating 2s ease-in-out infinite; }
-        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .character img { width: 100%; height: 100%; object-fit: contain; animation: floating 2.5s ease-in-out infinite; }
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         
-        #char-p1 { left: -50%; } /* 待機時は画面外 */
-        #char-p2 { right: -50%; transform: scaleX(-1); }
+        #char-p1 { left: -60%; } /* 待機位置 */
+        #char-p2 { right: -60%; transform: scaleX(-1); }
 
         /* ハンマー（最前面） */
         .hammer { position: absolute; display: none; z-index: 50; pointer-events: none; }
         .hammer img { width: 100%; height: 100%; object-fit: contain; }
         
         @keyframes throwHammerP1 {
-            0% { top: -20%; left: 30%; transform: rotate(0); opacity: 1; }
-            100% { top: 50%; left: 55%; transform: rotate(720deg); opacity: 1; }
+            0% { top: -20%; left: 20%; transform: rotate(0); }
+            100% { top: 45%; left: 60%; transform: rotate(720deg); }
         }
         @keyframes throwHammerP2 {
-            0% { top: -20%; right: 30%; transform: scaleX(-1) rotate(0); opacity: 1; }
-            100% { top: 50%; right: 55%; transform: scaleX(-1) rotate(-720deg); opacity: 1; }
+            0% { top: -20%; right: 20%; transform: scaleX(-1) rotate(0); }
+            100% { top: 45%; right: 60%; transform: scaleX(-1) rotate(-720deg); }
         }
-        .throwing-p1 { animation: throwHammerP1 0.4s ease-in forwards; }
-        .throwing-p2 { animation: throwHammerP2 0.4s ease-in forwards; }
+        .throwing-p1 { animation: throwHammerP1 0.45s ease-in forwards; }
+        .throwing-p2 { animation: throwHammerP2 0.45s ease-in forwards; }
 
-        .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 60; }
+        .particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; z-index: 60; }
 
         #start-signal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #fff; font-size: 4rem; font-weight: 900; text-shadow: 0 0 20px #000; z-index: 500; opacity: 0;
+            color: #fff; font-size: 5rem; font-weight: 900; text-shadow: 0 0 30px #000; z-index: 500; opacity: 0;
+            pointer-events: none;
         }
 
         #message-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            background: rgba(0,0,0,0.92); display: none; flex-direction: column;
             justify-content: center; align-items: center; color: #fff; z-index: 1000;
         }
     </style>
@@ -121,9 +128,9 @@
 
     <div id="game-world">
         <div id="hammer-info">
-            <div class="now-box">DAM: <span id="hammer-dmg-text">1</span></div>
-            <div style="display:flex; align-items:center; gap:8px">
-                <span style="font-size:0.7rem; color:#aaa">NEXT</span>
+            <div class="now-box">POWER: <span id="hammer-dmg-text">1</span></div>
+            <div style="display:flex; align-items:center; gap:10px">
+                <span style="font-size:0.7rem; color:#ccc">NEXT</span>
                 <img id="next-hammer-img" src="hammer1.svg">
             </div>
         </div>
@@ -149,22 +156,22 @@
     </div>
 
     <div id="message-overlay">
-        <div id="winner-text" style="font-size:3rem; font-weight:900; margin-bottom:20px;">P1 WIN!</div>
-        <button onclick="resetGame()" style="padding:15px 50px; font-size:1.5rem; background:#2ed573; border:none; border-radius:40px; color:#fff; font-weight:bold; cursor:pointer;">REMATCH</button>
+        <div id="winner-text" style="font-size:3.5rem; font-weight:900; margin-bottom:20px; color:#ffd700;">P1 WIN!</div>
+        <button onclick="resetGame()" style="padding:18px 60px; font-size:1.8rem; background:#2ed573; border:none; border-radius:50px; color:#fff; font-weight:bold; cursor:pointer; box-shadow: 0 5px 0 #26af5c;">REMATCH</button>
     </div>
 
     <script>
         const HAMMER_DATA = [
-            { name: "通常", damage: 1, file: "hammer1.svg", size: "80px", color: "#fff", weight: 0.7 },
-            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "110px", color: "#ffa500", weight: 0.2 },
-            { name: "強い", damage: 3, file: "hammer3.svg", size: "140px", color: "#ff0000", weight: 0.1 }
+            { name: "通常", damage: 1, file: "hammer1.svg", size: "90px", color: "#fff", weight: 0.7 },
+            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "120px", color: "#ffa500", weight: 0.2 },
+            { name: "強い", damage: 3, file: "hammer3.svg", size: "160px", color: "#ff0000", weight: 0.1 }
         ];
 
         let p1 = { life: 5, num: 0 }, p2 = { life: 5, num: 0 };
         let gameState = 'IDLE', currentHammer = null, nextHammer = null;
 
-        // キャラクターの中央寄り位置（中央からの距離）
-        const CENTER_POS = '35%'; 
+        // キャラクターの配置位置（端から5%の位置に巨大キャラを配置）
+        const SIDE_POS = '5%'; 
 
         function init() {
             p1.life = 5; p2.life = 5; updateUI();
@@ -176,13 +183,13 @@
 
         function showSignal(txt, callback) {
             const el = document.getElementById('start-signal');
-            el.textContent = txt; el.style.opacity = '1';
-            setTimeout(() => { el.style.opacity = '0'; if(callback) callback(); }, 700);
+            el.textContent = txt; el.style.opacity = '1'; el.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%, -50%) scale(0.9)'; if(callback) callback(); }, 700);
         }
 
         function resetPositions() {
-            document.getElementById('char-p1').style.left = '-50%';
-            document.getElementById('char-p2').style.right = '-50%';
+            document.getElementById('char-p1').style.left = '-70%';
+            document.getElementById('char-p2').style.right = '-70%';
         }
 
         function updateHammerSelection() {
@@ -202,8 +209,8 @@
             if (p1.life <= 0 || p2.life <= 0) return;
             gameState = 'ENTERING'; updateHammerSelection();
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
-            document.getElementById('char-p1').style.left = CENTER_POS;
-            document.getElementById('char-p2').style.right = CENTER_POS;
+            document.getElementById('char-p1').style.left = SIDE_POS;
+            document.getElementById('char-p2').style.right = SIDE_POS;
             setTimeout(() => {
                 if (gameState !== 'ENTERING') return;
                 gameState = 'BATTLE';
@@ -233,9 +240,9 @@
                 }, 400);
             } else {
                 const prop = (pid === 1) ? 'left' : 'right';
-                document.getElementById('char-p'+pid).style[prop] = '20%'; // 少し後ろへ回避
+                document.getElementById('char-p'+pid).style[prop] = '-15%'; 
                 setTimeout(() => {
-                    document.getElementById('char-p'+pid).style[prop] = CENTER_POS;
+                    document.getElementById('char-p'+pid).style[prop] = SIDE_POS;
                     if (!amIBigger) startRound();
                     else damage(pid, 1);
                 }, 300);
@@ -244,12 +251,12 @@
 
         function createFireworks(x, y, color) {
             const world = document.getElementById('game-world');
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 25; i++) {
                 const p = document.createElement('div');
                 p.className = 'particle'; p.style.backgroundColor = color;
                 p.style.left = x + 'px'; p.style.top = y + 'px';
-                p.style.setProperty('--tx', (Math.random() - 0.5) * 250 + 'px');
-                p.style.setProperty('--ty', (Math.random() - 0.5) * 250 + 'px');
+                p.style.setProperty('--tx', (Math.random() - 0.5) * 300 + 'px');
+                p.style.setProperty('--ty', (Math.random() - 0.5) * 300 + 'px');
                 p.style.animation = `explode 0.6s ease-out forwards`;
                 world.appendChild(p); setTimeout(() => p.remove(), 600);
             }
