@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Number Hammer: Ultra Mobile</title>
+    <title>Number Hammer: Front Character Edition</title>
     <style>
         :root {
-            --side-width: 55px; /* さらにスリム化 */
+            --side-width: 55px;
             --primary-bg: #111;
         }
         body {
@@ -15,14 +15,14 @@
             overflow: hidden; touch-action: none; display: flex; height: 100dvh;
         }
 
-        /* プレイヤー操作パネル（極限までスリムに） */
+        /* プレイヤー操作パネル */
         .player-side {
             width: var(--side-width); display: flex; flex-direction: column;
             background: #1a1a1a; z-index: 100; flex-shrink: 0;
             border-right: 1px solid #333; border-left: 1px solid #333;
         }
         .player-ui { height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; }
-        .life { color: #ff4444; font-size: 0.8rem; line-height: 1.1; text-align: center; }
+        .life { color: #ff4444; font-size: 0.8rem; line-height: 1.1; text-align: center; font-weight: bold; }
 
         .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 4px; }
         .btn {
@@ -41,7 +41,7 @@
             overflow: hidden;
         }
 
-        /* ハンマー情報パネル（コンパクト化） */
+        /* ハンマー情報パネル */
         #hammer-info {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.85); color: white; padding: 4px 12px;
@@ -52,51 +52,64 @@
         #hammer-dmg-text { font-size: 1rem; color: #ff4d4d; font-weight: 800; margin-left: 5px; }
         #next-hammer-img { width: 24px; height: 24px; object-fit: contain; }
 
-        /* 数字パネル（clampでサイズを制御） */
+        /* 数字パネル（キャラクターの背後：z-index 20） */
         .placard {
             position: absolute; 
-            width: clamp(80px, 30vw, 140px); 
-            height: clamp(120px, 45vw, 200px);
-            background: #fff; border: 4px solid #222; border-radius: 12px;
+            width: clamp(90px, 32vw, 150px); 
+            height: clamp(130px, 48vw, 220px);
+            background: #fff; border: 5px solid #222; border-radius: 15px;
             display: flex; justify-content: center; align-items: center;
-            font-size: clamp(3rem, 12vw, 6rem); font-weight: 900; 
-            top: 22%; z-index: 20; opacity: 0; transform: translateY(30px);
+            font-size: clamp(3.5rem, 13vw, 6.5rem); font-weight: 900; 
+            top: 18%; z-index: 20; opacity: 0; transform: translateY(30px);
             transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
         .placard.active { opacity: 1; transform: translateY(0); }
-        #card-p1 { left: 4%; }
-        #card-p2 { right: 4%; }
+        #card-p1 { left: 5%; }
+        #card-p2 { right: 5%; }
 
-        /* キャラクター（小さめに調整） */
+        /* キャラクター（最前面：z-index 30） */
         .character { 
-            position: absolute; bottom: 8%; 
-            width: clamp(120px, 38vw, 220px); 
-            height: clamp(120px, 38vw, 220px); 
-            z-index: 10; transition: 0.4s ease-out;
+            position: absolute; 
+            bottom: 3%; /* 1キャラ分手前（画面下寄り）に配置 */
+            width: clamp(140px, 45vw, 260px); 
+            height: clamp(140px, 45vw, 260px); 
+            z-index: 30; /* 数字パネルより手前 */
+            transition: 0.4s ease-out;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
         }
         .character img { width: 100%; height: 100%; object-fit: contain; animation: floating 2.5s ease-in-out infinite; }
         @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-        #char-p1 { left: -60%; }
-        #char-p2 { right: -60%; transform: scaleX(-1); }
+        
+        #char-p1 { left: -70%; }
+        #char-p2 { right: -70%; transform: scaleX(-1); }
 
-        /* ハンマー（サイズ制限） */
+        /* ハンマー（最前面：z-index 50） */
         .hammer { position: absolute; display: none; z-index: 50; pointer-events: none; }
         .hammer img { width: 100%; height: 100%; object-fit: contain; }
         
         @keyframes throwHammerP1 {
-            0% { top: -10%; left: 10%; transform: rotate(0); }
-            100% { top: 60%; left: 45%; transform: rotate(720deg); }
+            0% { top: -10%; left: 10%; transform: rotate(0); opacity: 1; }
+            100% { top: 65%; left: 45%; transform: rotate(720deg); opacity: 1; }
         }
         @keyframes throwHammerP2 {
-            0% { top: -10%; right: 10%; transform: scaleX(-1) rotate(0); }
-            100% { top: 60%; right: 45%; transform: scaleX(-1) rotate(-720deg); }
+            0% { top: -10%; right: 10%; transform: scaleX(-1) rotate(0); opacity: 1; }
+            100% { top: 65%; right: 45%; transform: scaleX(-1) rotate(-720deg); opacity: 1; }
         }
         .throwing-p1 { animation: throwHammerP1 0.45s ease-in forwards; }
         .throwing-p2 { animation: throwHammerP2 0.45s ease-in forwards; }
 
+        /* 花火エフェクト */
+        .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 60; }
+        @keyframes explode {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
         #start-signal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #fff; font-size: 2.5rem; font-weight: 900; text-shadow: 0 0 15px #000; z-index: 500; opacity: 0;
+            color: #fff; font-size: 3rem; font-weight: 900; text-shadow: 0 0 20px #000; z-index: 500; opacity: 0;
+            pointer-events: none;
         }
 
         #message-overlay {
@@ -109,10 +122,10 @@
 <body>
 
     <div class="player-side">
-        <div class="player-ui"><div class="life" id="life-p1">❤❤❤</div></div>
+        <div class="player-ui"><div class="life" id="life-p1"></div></div>
         <div class="controls">
             <button class="btn btn-hit" onclick="handleAction(1, 'HIT')">たた</button>
-            <button class="btn btn-dodge" onclick="handleAction(1, 'にげ')">にげ</button>
+            <button class="btn btn-dodge" onclick="handleAction(1, 'DODGE')">にげ</button>
         </div>
     </div>
 
@@ -126,9 +139,11 @@
         </div>
 
         <div id="start-signal">READY?</div>
+        
         <div id="card-p1" class="placard">?</div>
-        <div id="char-p1" class="character"><img src="player1.svg" alt="P1"></div>
         <div id="card-p2" class="placard">?</div>
+
+        <div id="char-p1" class="character"><img src="player1.svg" alt="P1"></div>
         <div id="char-p2" class="character"><img src="player2.svg" alt="P2"></div>
         
         <div id="hammer-p1" class="hammer"><img id="h-img-p1" src="hammer1.svg"></div>
@@ -136,23 +151,23 @@
     </div>
 
     <div class="player-side">
-        <div class="player-ui"><div class="life" id="life-p2">❤❤❤</div></div>
+        <div class="player-ui"><div class="life" id="life-p2"></div></div>
         <div class="controls">
             <button class="btn btn-hit" onclick="handleAction(2, 'HIT')">たた</button>
-            <button class="btn btn-dodge" onclick="handleAction(2, 'にげ')">にげ</button>
+            <button class="btn btn-dodge" onclick="handleAction(2, 'DODGE')">にげ</button>
         </div>
     </div>
 
     <div id="message-overlay">
-        <div id="winner-text" style="font-size:2rem; font-weight:900;">P1 WIN!</div>
-        <button onclick="resetGame()" style="padding:12px 24px; font-size:1.2rem; background:#2ed573; border:none; border-radius:20px; color:#fff; margin-top:20px; font-weight:bold;">REMATCH</button>
+        <div id="winner-text" style="font-size:2.2rem; font-weight:900; margin-bottom:20px;">P1 WIN!</div>
+        <button onclick="resetGame()" style="padding:15px 40px; font-size:1.4rem; background:#2ed573; border:none; border-radius:30px; color:#fff; font-weight:bold; cursor:pointer;">REMATCH</button>
     </div>
 
     <script>
         const HAMMER_DATA = [
-            { name: "通常", damage: 1, file: "hammer1.svg", size: "70px", color: "#fff", weight: 0.7 },
-            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "90px", color: "#ffa500", weight: 0.2 },
-            { name: "強い", damage: 3, file: "hammer3.svg", size: "115px", color: "#ff0000", weight: 0.1 }
+            { name: "通常", damage: 1, file: "hammer1.svg", size: "80px", color: "#fff", weight: 0.7 },
+            { name: "ふつう", damage: 2, file: "hammer2.svg", size: "105px", color: "#ffa500", weight: 0.2 },
+            { name: "強い", damage: 3, file: "hammer3.svg", size: "135px", color: "#ff0000", weight: 0.1 }
         ];
 
         let p1 = { life: 5, num: 0 }, p2 = { life: 5, num: 0 };
@@ -169,19 +184,27 @@
         function showSignal(txt, callback) {
             const el = document.getElementById('start-signal');
             el.textContent = txt; el.style.opacity = '1';
-            setTimeout(() => { el.style.opacity = '0'; if(callback) callback(); }, 700);
+            el.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            setTimeout(() => { 
+                el.style.opacity = '0'; 
+                el.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                if(callback) callback(); 
+            }, 700);
         }
 
         function resetPositions() {
-            document.getElementById('char-p1').style.left = '-60%';
-            document.getElementById('char-p2').style.right = '-60%';
+            document.getElementById('char-p1').style.left = '-75%';
+            document.getElementById('char-p2').style.right = '-75%';
         }
 
         function updateHammerSelection() {
             currentHammer = nextHammer;
             const rand = Math.random();
             let sum = 0;
-            for (let h of HAMMER_DATA) { sum += h.weight; if (rand < sum) { nextHammer = h; break; } }
+            for (let h of HAMMER_DATA) { 
+                sum += h.weight; 
+                if (rand < sum) { nextHammer = h; break; } 
+            }
 
             document.getElementById('hammer-dmg-text').textContent = currentHammer.damage;
             document.getElementById('next-hammer-img').src = nextHammer.file;
@@ -218,17 +241,33 @@
                 h.style.display = 'block'; h.classList.add(isP1 ? 'throwing-p1' : 'throwing-p2');
                 setTimeout(() => {
                     h.style.display = 'none'; h.classList.remove(isP1 ? 'throwing-p1' : 'throwing-p2');
-                    if (amIBigger) damage(isP1 ? 2 : 1, currentHammer.damage);
-                    else damage(pid, 1);
+                    if (amIBigger) {
+                        const r = document.getElementById('game-world').getBoundingClientRect();
+                        createFireworks(r.width/2, r.height/2 + 50, currentHammer.color);
+                        damage(isP1 ? 2 : 1, currentHammer.damage);
+                    } else { damage(pid, 1); }
                 }, 450);
             } else {
                 const prop = (pid === 1) ? 'left' : 'right';
-                document.getElementById('char-p'+pid).style[prop] = '-10%';
+                document.getElementById('char-p'+pid).style[prop] = '-15%'; // 回避動作
                 setTimeout(() => {
                     document.getElementById('char-p'+pid).style[prop] = '4%';
                     if (!amIBigger) startRound();
                     else damage(pid, 1);
                 }, 400);
+            }
+        }
+
+        function createFireworks(x, y, color) {
+            const world = document.getElementById('game-world');
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle'; p.style.backgroundColor = color;
+                p.style.left = x + 'px'; p.style.top = y + 'px';
+                p.style.setProperty('--tx', (Math.random() - 0.5) * 200 + 'px');
+                p.style.setProperty('--ty', (Math.random() - 0.5) * 200 + 'px');
+                p.style.animation = `explode 0.6s ease-out forwards`;
+                world.appendChild(p); setTimeout(() => p.remove(), 600);
             }
         }
 
@@ -245,8 +284,8 @@
         }
 
         function updateUI() {
-            document.getElementById('life-p1').innerHTML = "❤".repeat(Math.max(0, p1.life)).replace(/❤/g, '❤<br>');
-            document.getElementById('life-p2').innerHTML = "❤".repeat(Math.max(0, p2.life)).replace(/❤/g, '❤<br>');
+            document.getElementById('life-p1').innerHTML = "❤".repeat(Math.max(0, p1.life)).split('').join('<br>');
+            document.getElementById('life-p2').innerHTML = "❤".repeat(Math.max(0, p2.life)).split('').join('<br>');
         }
 
         function resetGame() { init(); }
