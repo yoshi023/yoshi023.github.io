@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Territory - Drag & Drop</title>
+    <style>
+        :root {
+            --p1-color: #3498db;
+            --p2-color: #e74c3c;
+            --bg-color: #1a1a1a;
+            --preview-ok: rgba(255, 255, 255, 0.4);
+            --preview-ng: rgba(255, 0, 0, 0.3);
+        }
+
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-color); color: white;
+            font-family: sans-serif; display: flex; 
+            justify-content: center; align-items: center; height: 100vh; 
+            overflow: hidden; touch-action: none;
+        }
+
+        #game-container {
+            display: flex; flex-direction: row; align-items: center;
+            gap: 15px; width: 95vw; height: 90vh;
+        }
+
+        #board {
+            display: grid; grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(5, 1fr); gap: 3px;
+            background-color: #333; border: 4px solid #444;
+            flex: 2.5; aspect-ratio: 2 / 1;
+            position: relative;
+        }
+
+        .cell { background-color: #222; border-radius: 4px; pointer-events: none; }
+        .cell.p1 { background-color: var(--p1-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .cell.p2 { background-color: var(--p2-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .cell.valid-preview { background-color: var(--preview-ok) !important; }
+        .cell.invalid-preview { background-color: var(--preview-ng) !important; }
+
+        #sidebar {
+            flex: 1.2; display: flex; flex-direction: column;
+            justify-content: space-around; align-items: center;
+            height: 100%; background: #2a2a2a; border-radius: 15px; padding: 10px;
+        }
+
+        #next-container {
+            text-align: center;
+            user-select: none;
+        }
+
+        #next-box {
+            width: 80px; height: 80px; display: grid;
+            grid-template-columns: repeat(4, 1fr); gap: 2px;
+            background: #111; padding: 8px; border-radius: 10px;
+            cursor: grab;
+            touch-action: none;
+        }
+        #next-box:active { cursor: grabbing; }
+
+        .mini-cell { background: transparent; pointer-events: none; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        button {
+            width: 100%; padding: 12px 0; font-size: 1rem; font-weight: bold;
+            border: none; border-radius: 8px; background: #444; color: white;
+        }
+        #rotate-btn { background: #27ae60; }
+        #skip-btn { background: #e67e22; }
+
+        #result-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 1000;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        #retry-btn { background: #3498db; width: 200px; padding: 15px; margin-top: 20px;}
+
+        @media screen and (orientation: portrait) { #warning { display: flex; } }
+        #warning {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; z-index: 999; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="warning">📱 画面を横向きにしてください</div>
+
+<div id="result-overlay">
+    <h1 id="winner-text">RESULT</h1>
+    <div id="result-scores" style="font-size: 1.5rem;"></div>
+    <button id="retry-btn" onclick="resetGame()">もういちど</button>
+</div>
+
+<div id="game-container">
+    <div id="board"></div>
+    <div id="sidebar">
+        <div id="info" style="text-align: center;">
+            <div id="turn-text" style="font-weight: bold; font-size: 1.2rem;"></div>
+            <div id="stats-display" style="font-size: 0.8rem; margin-top: 5px;"></div>
+        </div>
+        
+        <div id="next-container">
+            <div style="font-size:0.7rem; margin-bottom:4px;">DRAG ME!</div>
+            <div id="next-box"></div>
+        </div>
+
+        <div class="btn-group">
+            <button id="rotate-btn" onclick="rotatePiece()">回転 ↻</button>
+            <button id="skip-btn" onclick="skipTurn()">パスする</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ROWS = 5, COLS = 10;
+    let board, currentPlayer, scores, passCount, currentPiece;
+    let isDragging = false;
+
+    const SHAPES = [
+        [[1]], [[1,1]], [[1,1,1]], [[1,1],[1,0]],
+        [[1,1,1,1]], [[1,1],[1,1]], [[0,1,0],[1,1,1]],
+        [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]]
+    ];
+
+    function init() {
+        board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        scores = {1: 0, 2: 0};
+        passCount = {1: 3, 2: 3};
+        currentPlayer = 1;
+        
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${r}-${c}`;
+                boardEl.appendChild(cell);
+            }
+        }
+        
+        setupDragEvents();
+        spawnPiece();
+        updateUI();
+    }
+
+    function setupDragEvents() {
+        const nextBox = document.getElementById('next-box');
+        const boardEl = document.getElementById('board');
+
+        const onStart = (e) => {
+            isDragging = true;
+            handleMove(e);
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            handleMove(e);
+        };
+
+        const onEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const pos = getBoardPos(e);
+            if (pos) tryPlace(pos.r, pos.c);
+            clearPreview();
+        };
+
+        nextBox.addEventListener('pointerdown', onStart);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onEnd);
+    }
+
+    function handleMove(e) {
+        const pos = getBoardPos(e);
+        clearPreview();
+        if (pos) showPreview(pos.r, pos.c);
+    }
+
+    function getBoardPos(e) {
+        const boardEl = document.getElementById('board');
+        const rect = boardEl.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        if (clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom) {
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const r = Math.floor(y / (rect.height / ROWS));
+            const c = Math.floor(x / (rect.width / COLS));
+            return { r, c };
+        }
+        return null;
+    }
+
+    function spawnPiece() {
+        currentPiece = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        renderNextPiece();
+    }
+
+    function rotatePiece() {
+        currentPiece = currentPiece[0].map((_, i) => currentPiece.map(row => row[i]).reverse());
+        renderNextPiece();
+    }
+
+    function canPlace(r, c, shape) {
+        for (let ri = 0; ri < shape.length; ri++) {
+            for (let ci = 0; ci < shape[ri].length; ci++) {
+                if (shape[ri][ci]) {
+                    const tr = r + ri, tc = c + ci;
+                    if (tr >= ROWS || tc >= COLS || board[tr][tc] !== 0) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function tryPlace(r, c) {
+        if (canPlace(r, c, currentPiece)) {
+            currentPiece.forEach((row, ri) => {
+                row.forEach((val, ci) => {
+                    if (val) {
+                        board[r+ri][c+ci] = currentPlayer;
+                        scores[currentPlayer]++;
+                        document.getElementById(`cell-${r+ri}-${c+ci}`).className = `cell p${currentPlayer}`;
+                    }
+                });
+            });
+            nextTurn();
+        }
+    }
+
+    function skipTurn() {
+        if (passCount[currentPlayer] > 0) {
+            passCount[currentPlayer]--;
+            nextTurn();
+        }
+    }
+
+    function nextTurn() {
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        spawnPiece();
+        updateUI();
+        checkGameOver();
+    }
+
+    function checkGameOver() {
+        const isFull = board.every(row => row.every(cell => cell !== 0));
+        // 置ける場所があるか判定（簡易スキャン）
+        let canMove = false;
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(canPlace(r, c, currentPiece)) { canMove = true; break; }
+            }
+            if(canMove) break;
+        }
+
+        if (isFull || (!canMove && passCount[currentPlayer] === 0)) {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        const overlay = document.getElementById('result-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('result-scores').innerText = `P1: ${scores[1]} | P2: ${scores[2]}`;
+        const winTxt = document.getElementById('winner-text');
+        if (scores[1] > scores[2]) {
+            winTxt.innerText = "P1 WIN!"; winTxt.style.color = "var(--p1-color)";
+        } else if (scores[2] > scores[1]) {
+            winTxt.innerText = "P2 WIN!"; winTxt.style.color = "var(--p2-color)";
+        } else {
+            winTxt.innerText = "DRAW"; winTxt.style.color = "white";
+        }
+    }
+
+    function resetGame() {
+        document.getElementById('result-overlay').style.display = 'none';
+        init();
+    }
+
+    function showPreview(r, c) {
+        const ok = canPlace(r, c, currentPiece);
+        currentPiece.forEach((row, ri) => {
+            row.forEach((val, ci) => {
+                if (val) {
+                    const el = document.getElementById(`cell-${r+ri}-${c+ci}`);
+                    if (el) el.classList.add(ok ? 'valid-preview' : 'invalid-preview');
+                }
+            });
+        });
+    }
+
+    function clearPreview() {
+        document.querySelectorAll('.cell').forEach(e => e.classList.remove('valid-preview', 'invalid-preview'));
+    }
+
+    function updateUI() {
+        const t = document.getElementById('turn-text');
+        t.innerText = `P${currentPlayer}の番`;
+        t.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        document.getElementById('stats-display').innerHTML = `P1: ${scores[1]} (パス:${passCount[1]}) | P2: ${scores[2]} (パス:${passCount[2]})`;
+        
+        const skipBtn = document.getElementById('skip-btn');
+        skipBtn.disabled = passCount[currentPlayer] <= 0;
+        skipBtn.style.opacity = passCount[currentPlayer] <= 0 ? "0.3" : "1";
+    }
+
+    function renderNextPiece() {
+        const box = document.getElementById('next-box');
+        box.innerHTML = '';
+        const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        for (let i = 0; i < 16; i++) { box.appendChild(document.createElement('div')).className = 'mini-cell'; }
+        currentPiece.forEach((row, ri) => {
+            row.forEach((val, ci) => {
+                if (val) {
+                    const target = box.children[ri * 4 + ci];
+                    if(target) target.style.backgroundColor = color;
+                }
+            });
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>
