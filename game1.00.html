@@ -6,9 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <title>Number Hammer: Grand Title Edition</title>
+    <title>ジャッジ</title>
     <style>
         :root { --side-width: 90px; }
         body { 
@@ -18,7 +16,7 @@
         }
         .bg-style { background-color: #87ceeb; background-image: url('cloud_bg.png'); background-size: cover; background-position: center; }
 
-        /* 縦向き検知オーバーレイ */
+        /* 縦向き警告オーバーレイ（以前のバージョンを復元） */
         #orientation-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9); z-index: 9999;
@@ -34,61 +32,48 @@
         @keyframes rotateDevice { 0% { transform: rotate(0deg); } 50%, 100% { transform: rotate(-90deg); } }
 
         /* サイドパネル */
-        .player-side { width: var(--side-width); display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-        .player-ui { height: 40px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #333; }
-        .life { color: #ff4444; font-size: 0.8rem; font-weight: bold; }
-        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; padding: 10px 5px; }
+        .player-side { width: var(--side-width); display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0; padding: 10px 5px; box-sizing: border-box; }
+        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+        
+        .life-container { 
+            height: 100px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; 
+            align-content: center; border-top: 1px solid #333; border-bottom: 1px solid #333; margin: 5px 0;
+            max-width: 80px; margin-left: auto; margin-right: auto;
+        }
+        .life { color: #ff4444; font-size: 1.2rem; display: flex; flex-wrap: wrap; justify-content: center; line-height: 1.2; }
+
         .btn { flex: 1; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 900; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s; cursor: pointer; }
-        .btn:active { transform: translateY(2px); box-shadow: none; }
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
 
         #game-world { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; }
-
-        /* タイトル画面 */
+        .version-tag { position: absolute; top: 15px; right: 20px; color: white; font-size: 0.9rem; font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px 10px; border-radius: 20px; z-index: 5020; }
+        
         #title-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title-container { display: flex; gap: 0; align-items: center; justify-content: center; width: 100%; height: 100vh; position: relative; }
         .img-title-logo { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out infinite; }
         .img-title-player { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out 0.5s infinite; }
         .start-btn { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); padding: 18px 50px; font-size: 1.5rem; background: #2ed573; border: none; border-radius: 50px; color: #fff; font-weight: bold; box-shadow: 0 6px 0 #1b8a4b; cursor: pointer; z-index: 5010; }
-        
-        .copyright { 
-            position: absolute; bottom: 2%; width: 100%; text-align: center; 
-            color: rgba(255,255,255,0.9); font-size: 1rem; font-weight: bold; 
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5010; 
-        }
+        .copyright { position: absolute; bottom: 2%; width: 100%; text-align: center; color: rgba(255,255,255,0.9); font-size: 1rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5010; }
 
-        /* キャラクター & アニメーション */
-        .character { position: absolute; bottom: 5%; width: 45vh; height: 45vh; z-index: 30; transition: left 0.4s cubic-bezier(0.2, 0, 0.2, 1), right 0.4s cubic-bezier(0.2, 0, 0.2, 1), transform 0.2s, filter 0.2s; }
+        .character { position: absolute; bottom: 5%; width: 45vh; height: 45vh; z-index: 30; transition: left 0.4s, right 0.4s, filter 0.2s; }
         .character img { width: 100%; height: 100%; object-fit: contain; }
         #char-p2 img { transform: scaleX(-1); }
-
         .floating { animation: charFloat 2.5s ease-in-out infinite; }
         @keyframes charFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        
         .shake { animation: shakeAnim 0.4s ease-in-out; }
-        @keyframes shakeAnim {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-10px); }
-            40%, 80% { transform: translateX(10px); }
-        }
-
-        .hammer-projectile { position: absolute; width: 15vh; height: 15vh; z-index: 50; pointer-events: none; display: none; }
+        @keyframes shakeAnim { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
         .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 60; }
 
-        /* リザルト */
         #result-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 6000; display: none; background: rgba(0,0,0,0.95); flex-direction: row; align-items: center; justify-content: space-evenly; }
-        .win-display { display: flex; flex-direction: column; align-items: center; width: 60%; position: relative; height: 100%; }
-        .win-logo { width: 85%; max-width: 460px; height: auto; position: absolute; top: -20%; z-index: 6010; opacity: 0; transform: translateY(-30px); transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .winner-img { width: auto; height: 75vh; max-height: 380px; position: absolute; top: 18%; z-index: 6005; opacity: 0; transform: scale(0.8); transition: 0.6s 0.2s; }
+        .win-logo { width: 85%; max-width: 460px; position: absolute; top: -20%; z-index: 6010; opacity: 0; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .winner-img { height: 75vh; position: absolute; top: 18%; z-index: 6005; opacity: 0; transform: scale(0.8); transition: 0.6s 0.2s; }
         .show-res { opacity: 1 !important; transform: translate(0) scale(1) !important; }
 
-        #countdown-text { font-size: 8rem; font-weight: 900; color: #fff; text-shadow: 5px 5px 0 #000; opacity: 0; transform: scale(2); transition: 0.3s; }
-        .count-active { opacity: 1 !important; transform: scale(1) !important; }
         .placard { position: absolute; width: 15vw; height: 22vw; max-width: 100px; max-height: 140px; background: #fff; border: 5px solid #222; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 900; color: #333; top: 15%; opacity: 0; transform: translateY(20px); transition: 0.2s; z-index: 20; }
         .placard.active { opacity: 1; transform: translateY(0); }
         #card-p1 { left: 10%; } #card-p2 { right: 10%; }
-        .pop-text { position: absolute; font-size: 1.8rem; font-weight: bold; opacity: 0; z-index: 200; text-shadow: 2px 2px 0 #000; top: 40%; transition: 0.2s; color: white; }
+        .pop-text { position: absolute; font-size: 1.8rem; font-weight: bold; opacity: 0; z-index: 200; text-shadow: 2px 2px 0 #000; top: 40%; color: white; transition: 0.2s; }
     </style>
 </head>
 <body>
@@ -99,10 +84,11 @@
             <span style="font-size: 0.8rem; opacity: 0.7;">Please rotate your device</span>
         </div>
     </div>
-
-    <div id="start-overlay" style="position: absolute; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:1000;"><div id="countdown-text"></div></div>
+    
+    <div id="start-overlay" style="position: absolute; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:1000;"><div id="countdown-text" style="font-size: 8rem; font-weight: 900; color: #fff; opacity: 0; transition: 0.3s;"></div></div>
 
     <div id="title-screen" class="bg-style">
+        <div class="version-tag">v1.0.0</div>
         <div class="title-container">
             <img src="title_logo.svg" class="img-title-logo">
             <img src="title_player.svg" class="img-title-player">
@@ -112,9 +98,9 @@
     </div>
 
     <div class="player-side">
-        <div class="player-ui"><div class="life" id="life-p1"></div></div>
         <div class="controls">
             <button class="btn btn-hit" onpointerdown="handleAction(1, 'HIT')">たたく</button>
+            <div class="life-container"><div class="life" id="life-p1"></div></div>
             <button class="btn btn-dodge" onpointerdown="handleAction(1, 'DODGE')">さける</button>
         </div>
     </div>
@@ -125,50 +111,50 @@
                 <img id="ui-hammer-img" src="hammer1.svg" style="width:22px; height:22px;">
                 <div id="ui-hammer-dmg" style="color:#ff4d4d; font-size:1.1rem; font-weight:900;">1</div>
             </div>
-            <div style="width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 3px 0 #ccc; cursor: pointer; border: 2px solid #333;" onclick="location.reload()">🏠</div>
+            <div style="width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: 2px solid #333;" onclick="location.reload()">🏠</div>
         </div>
 
         <div id="card-p1" class="placard">?</div>
         <div id="card-p2" class="placard">?</div>
-        
         <div id="char-p1" class="character" style="left: -50%;"><img src="player1.svg"></div>
         <div id="char-p2" class="character" style="right: -50%;"><img src="player2.svg"></div>
-        
-        <img id="hammer-p1" class="hammer-projectile" src="hammer1.svg">
-        <img id="hammer-p2" class="hammer-projectile" src="hammer1.svg">
-
+        <img id="hammer-p1" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
+        <img id="hammer-p2" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
         <div id="pop-p1" class="pop-text" style="left: 15%;"></div>
         <div id="pop-p2" class="pop-text" style="right: 15%;"></div>
     </div>
 
     <div class="player-side">
-        <div class="player-ui"><div class="life" id="life-p2"></div></div>
         <div class="controls">
             <button class="btn btn-hit" onpointerdown="handleAction(2, 'HIT')">たたく</button>
+            <div class="life-container"><div class="life" id="life-p2"></div></div>
             <button class="btn btn-dodge" onpointerdown="handleAction(2, 'DODGE')">さける</button>
         </div>
     </div>
 
     <div id="result-screen">
-        <div class="win-display">
+        <div class="win-display" style="position:relative; width:60%; height:100%; display:flex; justify-content:center;">
             <img id="win-logo-img" src="win.svg" class="win-logo">
             <img id="winner-image" src="" class="winner-img">
         </div>
-        <div class="result-actions" style="display: flex; flex-direction: column; gap: 15px; width: 30%; align-items: center; z-index: 6020; padding-top: 20vh;">
-            <button onclick="initMatch()" style="padding:15px 40px; font-size:1.2rem; background:#2ed573; border:none; border-radius:40px; color:#fff; font-weight:bold; box-shadow:0 4px 0 #1b8a4b; cursor:pointer;">もういちど</button>
+        <div style="display: flex; flex-direction: column; gap: 15px; width: 30%; align-items: center; padding-top: 20vh; z-index: 7000;">
+            <button onclick="initMatch()" style="padding:15px 40px; font-size:1.2rem; background:#2ed573; border:none; border-radius:40px; color:#fff; font-weight:bold; cursor:pointer;">もういちど</button>
             <button style="background:none; border:1px solid #fff; color:#fff; padding:10px 20px; border-radius:20px; cursor:pointer;" onclick="location.reload()">終了</button>
         </div>
     </div>
 
     <script>
         const HAMMER_DATA = [{ dmg: 1, file: "hammer1.svg" }, { dmg: 2, file: "hammer2.svg" }, { dmg: 3, file: "hammer3.svg" }];
-        let p1 = { life: 6 }, p2 = { life: 6 };
-        let gameState = 'TITLE';
-        let currentDmg = 1;
+        let p1 = { life: 6, num: 0 }, p2 = { life: 6, num: 0 }, gameState = 'TITLE', currentDmg = 1;
 
         function updateLifeUI() {
-            document.getElementById('life-p1').textContent = "❤".repeat(Math.max(0, p1.life));
-            document.getElementById('life-p2').textContent = "❤".repeat(Math.max(0, p2.life));
+            const formatLife = (life) => {
+                let hearts = "❤".repeat(Math.max(0, life)).split('');
+                if (hearts.length > 3) hearts.splice(3, 0, '<br>');
+                return hearts.join('');
+            };
+            document.getElementById('life-p1').innerHTML = formatLife(p1.life);
+            document.getElementById('life-p2').innerHTML = formatLife(p2.life);
         }
 
         async function initMatch() {
@@ -176,19 +162,18 @@
             document.getElementById('title-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
             document.querySelectorAll('.show-res').forEach(el => el.classList.remove('show-res'));
-            // パネルを非表示に初期化
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             
-            const cp1 = document.getElementById('char-p1');
-            const cp2 = document.getElementById('char-p2');
+            const cp1 = document.getElementById('char-p1'), cp2 = document.getElementById('char-p2');
             cp1.style.left = '5%'; cp2.style.right = '5%';
             await new Promise(r => setTimeout(r, 600));
             cp1.classList.add('floating'); cp2.classList.add('floating');
 
             const cd = document.getElementById('countdown-text');
             for (let s of ["3", "2", "1", "GO!"]) {
-                cd.textContent = s; cd.classList.add('count-active');
-                await new Promise(r => setTimeout(r, 600)); cd.classList.remove('count-active');
+                cd.textContent = s; cd.style.opacity = '1'; cd.style.transform = 'scale(1)';
+                await new Promise(r => setTimeout(r, 600));
+                cd.style.opacity = '0'; cd.style.transform = 'scale(2)';
                 await new Promise(r => setTimeout(r, 100));
             }
             pickHammer(); startRound();
@@ -208,8 +193,7 @@
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             setTimeout(() => {
                 if (gameState === 'FINISH') return;
-                p1.num = Math.floor(Math.random() * 100);
-                p2.num = Math.floor(Math.random() * 100);
+                p1.num = Math.floor(Math.random() * 100); p2.num = Math.floor(Math.random() * 100);
                 document.getElementById('card-p1').textContent = p1.num;
                 document.getElementById('card-p2').textContent = p2.num;
                 document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
@@ -220,20 +204,25 @@
             const cardActive = document.querySelector('.placard').classList.contains('active');
             if (!cardActive) { showPop(pid, "おてつき！"); applyDamage(pid, 1, false); return; }
             if (gameState !== 'BATTLE') return;
-            const isWin = (pid === 1) ? (p1.num > p2.num) : (p2.num > p1.num);
-            if (action === 'HIT') throwHammer(pid, isWin);
+
+            // ★ 同数の場合は先に叩いた方の勝ちとする判定修正 ★
+            const isWin = (pid === 1) ? (p1.num >= p2.num) : (p2.num >= p1.num);
+            
+            if (action === 'HIT') throwHammer(pid, isWin); 
             else dodgeMove(pid, isWin);
         }
 
         function throwHammer(pid, isWin) {
             gameState = 'ANIMATING';
             const hammer = document.getElementById(`hammer-p${pid}`);
+            const startX = pid === 1 ? 20 : 80;
             const targetX = pid === 1 ? 75 : 25;
             hammer.style.display = 'block';
-            hammer.style.left = (pid === 1 ? 20 : 80) + '%'; hammer.style.bottom = '30%';
+            hammer.style.left = startX + '%'; hammer.style.bottom = '30%';
+            
             hammer.animate([
-                { left: (pid === 1 ? 20 : 80) + '%', bottom: '30%', transform: 'rotate(0deg)' },
-                { left: '50%', bottom: '60%', transform: 'rotate(180deg)' },
+                { left: startX + '%', bottom: '30%', transform: 'rotate(0deg)' },
+                { left: '50%', bottom: '65%', transform: 'rotate(180deg)' },
                 { left: targetX + '%', bottom: '30%', transform: 'rotate(360deg)' }
             ], { duration: 500, easing: 'ease-out' });
 
@@ -249,62 +238,45 @@
             }, 500);
         }
 
+        function createFirework(x) {
+            const world = document.getElementById('game-world');
+            for (let i = 0; i < 12; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.backgroundColor = ['#ff0','#f0f','#0ff','#fff'][Math.floor(Math.random()*4)];
+                p.style.left = x + '%'; p.style.bottom = '30%';
+                world.appendChild(p);
+                const angle = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 50;
+                p.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`, opacity: 0 }], { duration: 500 }).onfinish = () => p.remove();
+            }
+        }
+
         function applyDamage(pid, val, knockback) {
             const char = document.getElementById(`char-p${pid}`);
             char.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg)";
-            
             if (knockback) {
                 const side = pid === 1 ? 'left' : 'right';
-                char.classList.remove('floating');
-                char.style[side] = '-40%';
-                setTimeout(() => {
-                    char.style.filter = "none";
-                    if (gameState !== 'FINISH') {
-                        char.style[side] = '5%';
-                        char.classList.add('floating');
-                    }
-                }, 500);
+                char.classList.remove('floating'); char.style[side] = '-40%';
+                setTimeout(() => { char.style.filter = "none"; if (gameState !== 'FINISH') { char.style[side] = '5%'; char.classList.add('floating'); }}, 500);
             } else {
                 char.classList.add('shake');
-                setTimeout(() => {
-                    char.style.filter = "none";
-                    char.classList.remove('shake');
-                }, 400);
+                setTimeout(() => { char.style.filter = "none"; char.classList.remove('shake'); }, 400);
             }
-
             if (pid === 1) p1.life -= val; else p2.life -= val;
             updateLifeUI();
-            if (p1.life <= 0 || p2.life <= 0) {
-                setTimeout(() => showResult(p1.life <= 0 ? 2 : 1), 500);
-            } else if (gameState !== 'WAITING') {
-                setTimeout(() => { pickHammer(); startRound(); }, 800);
-            }
+            if (p1.life <= 0 || p2.life <= 0) setTimeout(() => showResult(p1.life <= 0 ? 2 : 1), 500);
+            else if (gameState !== 'FINISH') setTimeout(() => { pickHammer(); startRound(); }, 800);
         }
 
         function dodgeMove(pid, isWin) {
             gameState = 'ANIMATING';
-            const char = document.getElementById(`char-p${pid}`);
-            const side = pid === 1 ? 'left' : 'right';
+            const char = document.getElementById(`char-p${pid}`), side = pid === 1 ? 'left' : 'right';
             char.style[side] = '-10%';
             setTimeout(() => {
                 char.style[side] = '5%';
                 if (!isWin) { pickHammer(); startRound(); }
                 else { showPop(pid, "MISS!"); applyDamage(pid, 1, false); }
             }, 400);
-        }
-
-        function createFirework(xPercent) {
-            const world = document.getElementById('game-world');
-            for (let i = 0; i < 15; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.backgroundColor = ['#ff0','#f0f','#0ff','#f00','#fff'][Math.floor(Math.random()*5)];
-                p.style.left = xPercent + '%'; p.style.bottom = '30%';
-                world.appendChild(p);
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 60 + Math.random() * 80;
-                p.animate([{ transform: 'translate(0, 0)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`, opacity: 0 }], { duration: 600 }).onfinish = () => p.remove();
-            }
         }
 
         function showPop(pid, text) {
@@ -315,9 +287,8 @@
 
         function showResult(winner) {
             gameState = 'FINISH';
-            const res = document.getElementById('result-screen');
             document.getElementById('winner-image').src = `player${winner}_win.svg`;
-            res.style.display = 'flex';
+            document.getElementById('result-screen').style.display = 'flex';
             setTimeout(() => document.getElementById('win-logo-img').classList.add('show-res'), 100);
             setTimeout(() => document.getElementById('winner-image').classList.add('show-res'), 400);
         }
