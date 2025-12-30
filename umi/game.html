@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Territory - Landscape Only</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a1a">
+    
+    <title>Block Territory PWA</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <style>
         :root {
             --p1-color: #3498db;
@@ -23,7 +31,7 @@
             justify-content: center; align-items: center; text-align: center;
         }
         .phone-icon {
-            width: 50px; height: 80px; border: 3px solid white; border-radius: 5px;
+            width: 40px; height: 70px; border: 3px solid white; border-radius: 5px;
             margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;
         }
         @keyframes rotatePhone {
@@ -32,7 +40,6 @@
             100% { transform: rotate(-90deg); }
         }
 
-        /* 縦向きの時だけオーバーレイを表示 */
         @media screen and (orientation: portrait) {
             #orientation-overlay { display: flex; }
             #game-container { display: none; }
@@ -54,8 +61,9 @@
             flex: 1; display: flex; flex-direction: column;
             justify-content: space-around; align-items: center;
             background: #2a2a2a; border-radius: 15px; padding: 10px;
-            border: 4px solid transparent; transition: all 0.3s; max-width: 150px;
+            border: 4px solid transparent; transition: all 0.3s; max-width: 140px;
         }
+        .player-panel.active { opacity: 1; filter: none; pointer-events: auto; }
         .player-panel.p1-side.active { border-color: var(--p1-color); box-shadow: 0 0 15px var(--p1-color); }
         .player-panel.p2-side.active { border-color: var(--p2-color); box-shadow: 0 0 15px var(--p2-color); }
         .player-panel:not(.active) { opacity: 0.3; filter: grayscale(0.8); pointer-events: none; }
@@ -68,37 +76,40 @@
             width: 100%; aspect-ratio: 2 / 1; position: relative;
         }
 
-        .cell { background-color: #222; border-radius: 4px; pointer-events: none; position: relative; overflow: hidden; }
-        .cell.p1 { background-color: var(--p1-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        .cell.p2 { background-color: var(--p2-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .cell { background-color: #222; border-radius: 3px; position: relative; overflow: hidden; }
+        .cell.p1 { background-color: var(--p1-color); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+        .cell.p2 { background-color: var(--p2-color); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
         
         .cell.hard {
             background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important;
-            border: 1px solid #95a5a6; box-shadow: inset 0 0 5px #fff;
+            border: 1px solid #95a5a6;
         }
-        .cell.hard::before, .cell.hard::after { content: "•"; position: absolute; font-size: 8px; color: #ecf0f1; }
-        .cell.hard::before { top: 2px; left: 2px; } .cell.hard::after { bottom: 2px; right: 2px; }
+        .cell.hard::before { content: "•"; position: absolute; top: 1px; left: 1px; font-size: 6px; color: #eee; }
 
-        .cell.scorched { background-color: var(--scorch-color) !important; background-image: radial-gradient(circle, #333 1px, transparent 1px); background-size: 4px 4px; }
-        .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; }
+        .cell.scorched { background-color: var(--scorch-color) !important; background-image: radial-gradient(circle, #333 1px, transparent 1px); background-size: 3px 3px; }
+        .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.1rem; }
 
         .explosion-fx { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; animation: flash 0.8s forwards; }
         @keyframes flash { 0% { background: #fff; opacity:1; } 100% { background: var(--scorch-color); opacity:0; } }
         .shake { animation: shake 0.4s ease-in-out; }
-        @keyframes shake { 0%, 100% { transform:translate(0,0); } 20%, 60% { transform:translate(-5px, 3px); } 40%, 80% { transform:translate(5px, -3px); } }
+        @keyframes shake { 0%, 100% { transform:translate(0,0); } 25% { transform:translate(-4px, 2px); } 75% { transform:translate(4px, -2px); } }
 
         #boom-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; color: #ffeb3b; opacity: 0; z-index: 100; pointer-events: none;}
         .boom-anim { animation: boom 0.8s ease-out; }
         @keyframes boom { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.5); } }
 
-        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: #111; padding: 5px; border-radius: 8px; touch-action: none; }
+        .next-box { width: 60px; height: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; touch-action: none; }
         .mini-cell { background: transparent; }
-        .btn-skip { width: 100%; padding: 8px; font-weight: bold; border-radius: 8px; border: none; background: #555; color: white; font-size: 0.8rem; }
+        .btn-skip { width: 100%; padding: 6px; font-weight: bold; border-radius: 6px; border: none; background: #555; color: white; font-size: 0.7rem; cursor: pointer; }
 
-        #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; }
+        #fs-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; cursor: pointer; z-index: 2000; }
+
+        #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
+
+<button id="fs-btn" onclick="toggleFullScreen()">全画面表示</button>
 
 <div id="orientation-overlay">
     <div class="phone-icon"></div>
@@ -108,32 +119,45 @@
 <div id="result-overlay">
     <h1 id="winner-text">RESULT</h1>
     <div id="result-scores" style="font-size: 1.5rem; margin-bottom: 20px;"></div>
-    <button style="background: #3498db; color:white; width: 180px; padding: 12px; border-radius:8px; border:none;" onclick="resetGame()">もういちど</button>
+    <button style="background: #3498db; color:white; width: 160px; padding: 12px; border-radius:8px; border:none;" onclick="resetGame()">もういちど</button>
 </div>
 
 <div id="game-container">
     <div id="panel-p1" class="player-panel p1-side">
-        <h2 style="color: var(--p1-color); margin:0;">P1</h2>
-        <div id="score-p1" style="font-size: 1.2rem;">0</div>
+        <h2 style="color: var(--p1-color); margin:0; font-size: 1.2rem;">P1</h2>
+        <div id="score-p1" style="font-size: 1rem;">0</div>
         <div id="next-p1" class="next-box"></div>
         <button id="skip-p1" class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p1">3</span>)</button>
     </div>
 
     <div id="board-container">
-        <div id="penalty-text" style="font-size: 0.9rem; color: #f1c40f; font-weight: bold; height: 1.2em;"></div>
+        <div id="penalty-text" style="font-size: 0.8rem; color: #f1c40f; font-weight: bold; height: 1.2em;"></div>
         <div id="board"><div id="boom-text">BOOM!</div></div>
-        <div id="turn-display" style="font-size: 1.1rem; font-weight: bold;"></div>
+        <div id="turn-display" style="font-size: 1rem; font-weight: bold;"></div>
     </div>
 
     <div id="panel-p2" class="player-panel p2-side">
-        <h2 style="color: var(--p2-color); margin:0;">P2</h2>
-        <div id="score-p2" style="font-size: 1.2rem;">0</div>
+        <h2 style="color: var(--p2-color); margin:0; font-size: 1.2rem;">P2</h2>
+        <div id="score-p2" style="font-size: 1rem;">0</div>
         <div id="next-p2" class="next-box"></div>
         <button id="skip-p2" class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p2">3</span>)</button>
     </div>
 </div>
 
 <script>
+    // --- PWA / Fullscreen Utils ---
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`Error: ${err.message}`);
+            });
+            document.getElementById('fs-btn').innerText = "解除";
+        } else {
+            document.exitFullscreen();
+            document.getElementById('fs-btn').innerText = "全画面表示";
+        }
+    }
+
     // --- ゲーム設定 ---
     const ROWS = 5, COLS = 10;
     let board, currentPlayer, scores, passCount, currentPiece, visibleBombs, hiddenBombs, isWait, isHard;
@@ -242,7 +266,7 @@
                     const cell = document.getElementById(`cell-${r}-${c}`);
                     if (board[r][c] !== "hard") {
                         const fx = document.createElement('div'); fx.className = 'explosion-fx'; cell.appendChild(fx);
-                        if (board[r][c] !== 0) { scores[board[r][c]]--; board[r][c] = 0; }
+                        if (board[r][c] !== 0 && typeof board[r][c] === 'number') { scores[board[r][c]]--; board[r][c] = 0; }
                         setTimeout(() => { cell.innerHTML = ''; cell.className = 'cell scorched'; 
                         setTimeout(() => { if (board[r][c] === 0) cell.className = 'cell'; }, 2500); }, 800);
                     }
@@ -258,7 +282,7 @@
         let nextPlayer = (currentPlayer === 1) ? 2 : 1;
         if (skipPenalty[nextPlayer]) {
             skipPenalty[nextPlayer] = false;
-            document.getElementById('penalty-text').innerText = `P${nextPlayer}休み！P${currentPlayer}の連続攻撃`;
+            document.getElementById('penalty-text').innerText = `P${nextPlayer}休み！P${currentPlayer}の連続手番`;
         } else {
             document.getElementById('penalty-text').innerText = "";
             currentPlayer = nextPlayer;
@@ -279,8 +303,8 @@
     }
 
     function updateUI() {
-        document.getElementById('panel-p1').className = `player-panel p1-side ${currentPlayer === 1 ? 'active' : ''}`;
-        document.getElementById('panel-p2').className = `player-panel p2-side ${currentPlayer === 2 ? 'active' : ''}`;
+        document.getElementById('panel-p1').classList.toggle('active', currentPlayer === 1);
+        document.getElementById('panel-p2').classList.toggle('active', currentPlayer === 2);
         document.getElementById('score-p1').innerText = scores[1]; document.getElementById('score-p2').innerText = scores[2];
         document.getElementById('pass-p1').innerText = passCount[1]; document.getElementById('pass-p2').innerText = passCount[2];
         const td = document.getElementById('turn-display');
