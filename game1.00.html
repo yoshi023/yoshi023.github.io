@@ -3,12 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ジャッジ">
+    
     <title>ジャッジ</title>
     <style>
-        :root { --side-width: 90px; }
+        :root { 
+            --side-width: 110px; 
+            --safe-left: env(safe-area-inset-left);
+            --safe-right: env(safe-area-inset-right);
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
         body { 
             margin: 0; padding: 0; background-color: #111; 
             font-family: 'Hiragino Kaku Gothic ProN', sans-serif; 
@@ -16,47 +26,65 @@
         }
         .bg-style { background-color: #87ceeb; background-image: url('cloud_bg.png'); background-size: cover; background-position: center; }
 
-        /* 縦向き警告オーバーレイ（以前のバージョンを復元） */
+        /* 縦向き警告 */
         #orientation-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); z-index: 9999;
-            flex-direction: column; align-items: center; justify-content: center;
-            color: white; text-align: center;
+            background: rgba(0, 0, 0, 0.9); z-index: 10000;
+            flex-direction: column; align-items: center; justify-content: center; color: white;
         }
         @media (orientation: portrait) { #orientation-overlay { display: flex; } }
-        .rotate-icon {
-            width: 80px; height: 80px; margin-bottom: 20px;
-            border: 4px solid #fff; border-radius: 12px;
-            animation: rotateDevice 2s ease-in-out infinite;
-        }
+        .rotate-icon { width: 80px; height: 80px; border: 4px solid #fff; border-radius: 12px; animation: rotateDevice 2s ease-in-out infinite; margin-bottom: 20px;}
         @keyframes rotateDevice { 0% { transform: rotate(0deg); } 50%, 100% { transform: rotate(-90deg); } }
 
-        /* サイドパネル */
-        .player-side { width: var(--side-width); display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0; padding: 10px 5px; box-sizing: border-box; }
-        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+        /* サイドパネル（セーフエリア対応） */
+        .player-side { 
+            width: calc(var(--side-width) + var(--safe-left)); 
+            display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.9); 
+            z-index: 100; flex-shrink: 0; box-sizing: border-box;
+            padding: 10px 0 calc(10px + var(--safe-bottom)); /* 左右パディングはcontrolsで制御 */
+        }
+        .player-side.right-side { width: calc(var(--side-width) + var(--safe-right)); }
+        
+        .controls { 
+            flex-grow: 1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box;
+            padding-left: calc(5px + var(--safe-left)); padding-right: 5px;
+        }
+        .right-side .controls { 
+            padding-left: 5px; padding-right: calc(5px + var(--safe-right)); 
+        }
         
         .life-container { 
             height: 100px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; 
             align-content: center; border-top: 1px solid #333; border-bottom: 1px solid #333; margin: 5px 0;
-            max-width: 80px; margin-left: auto; margin-right: auto;
+            width: 100%;
         }
-        .life { color: #ff4444; font-size: 1.2rem; display: flex; flex-wrap: wrap; justify-content: center; line-height: 1.2; }
+        .life { color: #ff4444; font-size: 1.1rem; display: flex; flex-wrap: wrap; justify-content: center; line-height: 1.2; max-width: 60px; }
 
-        .btn { flex: 1; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 900; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s; cursor: pointer; }
+        .btn { flex: 1; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 900; color: white; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.6); }
         .btn-hit { background-color: #e63946; }
         .btn-dodge { background-color: #457b9d; }
         .btn:active { transform: translateY(2px); box-shadow: none; }
 
         #game-world { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; }
-        .version-tag { position: absolute; top: 15px; right: 20px; color: white; font-size: 0.9rem; font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px 10px; border-radius: 20px; z-index: 5020; }
-        
-        #title-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .img-title-logo { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out infinite; }
-        .img-title-player { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out 0.5s infinite; }
-        .start-btn { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); padding: 18px 50px; font-size: 1.5rem; background: #2ed573; border: none; border-radius: 50px; color: #fff; font-weight: bold; box-shadow: 0 6px 0 #1b8a4b; cursor: pointer; z-index: 5010; }
-        .copyright { position: absolute; bottom: 2%; width: 100%; text-align: center; color: rgba(255,255,255,0.9); font-size: 1rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5010; }
 
-        .character { position: absolute; bottom: 5%; width: 45vh; height: 45vh; z-index: 30; transition: left 0.4s, right 0.4s, filter 0.2s; }
+        /* タイトル画面 */
+        #title-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 5000; display: flex; align-items: center; justify-content: center; }
+        .title-container { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; }
+        .img-title-logo, .img-title-player { width: 45%; height: 80vh; object-fit: contain; pointer-events: none; }
+        .img-title-logo { animation: charFloat 3s ease-in-out infinite; }
+        .img-title-player { animation: charFloat 3s ease-in-out 0.5s infinite; }
+        .start-btn { position: absolute; bottom: 18%; left: 50%; transform: translateX(-50%); padding: 18px 50px; font-size: 1.6rem; background: #2ed573; border: none; border-radius: 50px; color: #fff; font-weight: bold; cursor: pointer; box-shadow: 0 6px 0 #1b8a4b; z-index: 5100; }
+        .version-tag { position: absolute; top: calc(15px + var(--safe-top)); right: calc(15px + var(--safe-right)); color: white; background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; z-index: 5200; font-weight: bold; }
+        .copyright { position: absolute; bottom: calc(8px + var(--safe-bottom)); width: 100%; text-align: center; color: white; font-size: 0.9rem; font-weight: bold; z-index: 5100; text-shadow: 1px 1px 2px #000; }
+
+        /* リザルト画面 */
+        #result-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 6000; display: none; background: rgba(0,0,0,0.95); flex-direction: row; align-items: center; justify-content: space-evenly; padding: 0 var(--safe-right) 0 var(--safe-left); }
+        .win-logo { width: 85%; max-width: 460px; position: absolute; top: -20%; z-index: 6010; opacity: 0; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .winner-img { height: 75vh; position: absolute; top: 18%; z-index: 6005; opacity: 0; transform: scale(0.8); transition: 0.6s 0.2s; }
+        .show-res { opacity: 1 !important; transform: translate(0) scale(1) !important; }
+
+        /* 演出・キャラ */
+        .character { position: absolute; bottom: calc(5% + var(--safe-bottom)); width: 45vh; height: 45vh; z-index: 30; transition: left 0.4s, right 0.4s, filter 0.2s; }
         .character img { width: 100%; height: 100%; object-fit: contain; }
         #char-p2 img { transform: scaleX(-1); }
         .floating { animation: charFloat 2.5s ease-in-out infinite; }
@@ -64,28 +92,14 @@
         .shake { animation: shakeAnim 0.4s ease-in-out; }
         @keyframes shakeAnim { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
         .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 60; }
-
-        #result-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 6000; display: none; background: rgba(0,0,0,0.95); flex-direction: row; align-items: center; justify-content: space-evenly; }
-        .win-logo { width: 85%; max-width: 460px; position: absolute; top: -20%; z-index: 6010; opacity: 0; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .winner-img { height: 75vh; position: absolute; top: 18%; z-index: 6005; opacity: 0; transform: scale(0.8); transition: 0.6s 0.2s; }
-        .show-res { opacity: 1 !important; transform: translate(0) scale(1) !important; }
-
-        .placard { position: absolute; width: 15vw; height: 22vw; max-width: 100px; max-height: 140px; background: #fff; border: 5px solid #222; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 900; color: #333; top: 15%; opacity: 0; transform: translateY(20px); transition: 0.2s; z-index: 20; }
+        .placard { position: absolute; width: 100px; height: 140px; background: #fff; border: 5px solid #222; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 900; top: 15%; opacity: 0; transition: 0.2s; z-index: 20; }
         .placard.active { opacity: 1; transform: translateY(0); }
         #card-p1 { left: 10%; } #card-p2 { right: 10%; }
         .pop-text { position: absolute; font-size: 1.8rem; font-weight: bold; opacity: 0; z-index: 200; text-shadow: 2px 2px 0 #000; top: 40%; color: white; transition: 0.2s; }
     </style>
 </head>
-<body>
-    <div id="orientation-overlay">
-        <div class="rotate-icon"></div>
-        <div style="font-size: 1.2rem; font-weight: bold; padding: 0 20px;">
-            画面を横にしてください<br>
-            <span style="font-size: 0.8rem; opacity: 0.7;">Please rotate your device</span>
-        </div>
-    </div>
-    
-    <div id="start-overlay" style="position: absolute; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:1000;"><div id="countdown-text" style="font-size: 8rem; font-weight: 900; color: #fff; opacity: 0; transition: 0.3s;"></div></div>
+<body onload="updateLifeUI()">
+    <div id="orientation-overlay"><div class="rotate-icon"></div><div>画面を横にしてください</div></div>
 
     <div id="title-screen" class="bg-style">
         <div class="version-tag">v1.0.0</div>
@@ -94,41 +108,6 @@
             <img src="title_player.svg" class="img-title-player">
             <button class="start-btn" onclick="initMatch()">ゲームスタート</button>
             <div class="copyright">© 2025 Cosmos Inc © YoshidaStudio © PANICPUMPKIN</div>
-        </div>
-    </div>
-
-    <div class="player-side">
-        <div class="controls">
-            <button class="btn btn-hit" onpointerdown="handleAction(1, 'HIT')">たたく</button>
-            <div class="life-container"><div class="life" id="life-p1"></div></div>
-            <button class="btn btn-dodge" onpointerdown="handleAction(1, 'DODGE')">さける</button>
-        </div>
-    </div>
-    
-    <div id="game-world" class="bg-style">
-        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 15px;">
-            <div style="background: rgba(0,0,0,0.85); color: white; padding: 5px 15px; border-radius: 50px; border: 2px solid #ffd700; display: flex; align-items: center; gap: 8px;">
-                <img id="ui-hammer-img" src="hammer1.svg" style="width:22px; height:22px;">
-                <div id="ui-hammer-dmg" style="color:#ff4d4d; font-size:1.1rem; font-weight:900;">1</div>
-            </div>
-            <div style="width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: 2px solid #333;" onclick="location.reload()">🏠</div>
-        </div>
-
-        <div id="card-p1" class="placard">?</div>
-        <div id="card-p2" class="placard">?</div>
-        <div id="char-p1" class="character" style="left: -50%;"><img src="player1.svg"></div>
-        <div id="char-p2" class="character" style="right: -50%;"><img src="player2.svg"></div>
-        <img id="hammer-p1" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
-        <img id="hammer-p2" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
-        <div id="pop-p1" class="pop-text" style="left: 15%;"></div>
-        <div id="pop-p2" class="pop-text" style="right: 15%;"></div>
-    </div>
-
-    <div class="player-side">
-        <div class="controls">
-            <button class="btn btn-hit" onpointerdown="handleAction(2, 'HIT')">たたく</button>
-            <div class="life-container"><div class="life" id="life-p2"></div></div>
-            <button class="btn btn-dodge" onpointerdown="handleAction(2, 'DODGE')">さける</button>
         </div>
     </div>
 
@@ -143,154 +122,169 @@
         </div>
     </div>
 
+    <div class="player-side">
+        <div class="controls">
+            <button class="btn btn-hit" onpointerdown="handleAction(1, 'HIT')">たたく</button>
+            <div class="life-container"><div class="life" id="life-p1"></div></div>
+            <button class="btn btn-dodge" onpointerdown="handleAction(1, 'DODGE')">さける</button>
+        </div>
+    </div>
+    
+    <div id="game-world" class="bg-style">
+        <div style="position: absolute; top: calc(10px + var(--safe-top)); left: 50%; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 15px;">
+            <div style="background: rgba(0,0,0,0.85); color: white; padding: 5px 15px; border-radius: 50px; border: 2px solid #ffd700; display: flex; align-items: center; gap: 8px;">
+                <img id="ui-hammer-img" src="hammer1.svg" style="width:22px; height:22px;">
+                <div id="ui-hammer-dmg" style="color:#ff4d4d; font-size:1.1rem; font-weight:900;">1</div>
+            </div>
+            <div style="width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: 2px solid #333; box-shadow: 0 2px 4px rgba(0,0,0,0.3);" onclick="location.reload()">🏠</div>
+        </div>
+
+        <div id="card-p1" class="placard">?</div>
+        <div id="card-p2" class="placard">?</div>
+        <div id="char-p1" class="character" style="left: -50%;"><img src="player1.svg"></div>
+        <div id="char-p2" class="character" style="right: -50%;"><img src="player2.svg"></div>
+        <img id="hammer-p1" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
+        <img id="hammer-p2" style="position:absolute; width:15vh; z-index:50; display:none;" src="hammer1.svg">
+        <div id="pop-p1" class="pop-text" style="left: 15%;"></div>
+        <div id="pop-p2" class="pop-text" style="right: 15%;"></div>
+    </div>
+
+    <div class="player-side right-side">
+        <div class="controls">
+            <button class="btn btn-hit" onpointerdown="handleAction(2, 'HIT')">たたく</button>
+            <div class="life-container"><div class="life" id="life-p2"></div></div>
+            <button class="btn btn-dodge" onpointerdown="handleAction(2, 'DODGE')">さける</button>
+        </div>
+    </div>
+
     <script>
-        const HAMMER_DATA = [{ dmg: 1, file: "hammer1.svg" }, { dmg: 2, file: "hammer2.svg" }, { dmg: 3, file: "hammer3.svg" }];
         let p1 = { life: 6, num: 0 }, p2 = { life: 6, num: 0 }, gameState = 'TITLE', currentDmg = 1;
 
         function updateLifeUI() {
-            const formatLife = (life) => {
-                let hearts = "❤".repeat(Math.max(0, life)).split('');
-                if (hearts.length > 3) hearts.splice(3, 0, '<br>');
-                return hearts.join('');
+            const format = (l) => {
+                let h = "❤".repeat(Math.max(0, l)).split('');
+                if(h.length > 3) h.splice(3, 0, '<br>');
+                return h.join('');
             };
-            document.getElementById('life-p1').innerHTML = formatLife(p1.life);
-            document.getElementById('life-p2').innerHTML = formatLife(p2.life);
+            document.getElementById('life-p1').innerHTML = format(p1.life);
+            document.getElementById('life-p2').innerHTML = format(p2.life);
         }
 
-        async function initMatch() {
+        function initMatch() {
             p1.life = 6; p2.life = 6; updateLifeUI();
             document.getElementById('title-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
-            document.querySelectorAll('.show-res').forEach(el => el.classList.remove('show-res'));
-            document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
+            document.getElementById('win-logo-img').classList.remove('show-res');
+            document.getElementById('winner-image').classList.remove('show-res');
             
             const cp1 = document.getElementById('char-p1'), cp2 = document.getElementById('char-p2');
             cp1.style.left = '5%'; cp2.style.right = '5%';
-            await new Promise(r => setTimeout(r, 600));
             cp1.classList.add('floating'); cp2.classList.add('floating');
-
-            const cd = document.getElementById('countdown-text');
-            for (let s of ["3", "2", "1", "GO!"]) {
-                cd.textContent = s; cd.style.opacity = '1'; cd.style.transform = 'scale(1)';
-                await new Promise(r => setTimeout(r, 600));
-                cd.style.opacity = '0'; cd.style.transform = 'scale(2)';
-                await new Promise(r => setTimeout(r, 100));
-            }
             pickHammer(); startRound();
         }
 
         function pickHammer() {
             const idx = Math.random() < 0.6 ? 0 : Math.random() < 0.9 ? 1 : 2;
-            currentDmg = HAMMER_DATA[idx].dmg;
-            document.getElementById('ui-hammer-img').src = HAMMER_DATA[idx].file;
+            currentDmg = idx + 1;
+            document.getElementById('ui-hammer-img').src = `hammer${currentDmg}.svg`;
             document.getElementById('ui-hammer-dmg').textContent = currentDmg;
-            document.getElementById('hammer-p1').src = HAMMER_DATA[idx].file;
-            document.getElementById('hammer-p2').src = HAMMER_DATA[idx].file;
+            document.getElementById('hammer-p1').src = `hammer${currentDmg}.svg`;
+            document.getElementById('hammer-p2').src = `hammer${currentDmg}.svg`;
         }
 
         function startRound() {
             gameState = 'BATTLE';
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             setTimeout(() => {
-                if (gameState === 'FINISH') return;
-                p1.num = Math.floor(Math.random() * 100); p2.num = Math.floor(Math.random() * 100);
+                if(gameState !== 'BATTLE') return;
+                p1.num = Math.floor(Math.random()*100); p2.num = Math.floor(Math.random()*100);
                 document.getElementById('card-p1').textContent = p1.num;
                 document.getElementById('card-p2').textContent = p2.num;
                 document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
-            }, 1500 + Math.random() * 3000);
+            }, 1500 + Math.random()*2000);
         }
 
         function handleAction(pid, action) {
-            const cardActive = document.querySelector('.placard').classList.contains('active');
-            if (!cardActive) { showPop(pid, "おてつき！"); applyDamage(pid, 1, false); return; }
-            if (gameState !== 'BATTLE') return;
-
-            // ★ 同数の場合は先に叩いた方の勝ちとする判定修正 ★
-            const isWin = (pid === 1) ? (p1.num >= p2.num) : (p2.num >= p1.num);
+            if(gameState !== 'BATTLE') return;
+            const active = document.querySelector('.placard').classList.contains('active');
+            if(!active) { showPop(pid, "おてつき!"); applyDamage(pid, 1, false); return; }
             
-            if (action === 'HIT') throwHammer(pid, isWin); 
-            else dodgeMove(pid, isWin);
+            const isWin = (pid === 1) ? (p1.num >= p2.num) : (p2.num >= p1.num);
+            if(action === 'HIT') throwHammer(pid, isWin); else dodgeMove(pid, isWin);
         }
 
         function throwHammer(pid, isWin) {
             gameState = 'ANIMATING';
             const hammer = document.getElementById(`hammer-p${pid}`);
-            const startX = pid === 1 ? 20 : 80;
-            const targetX = pid === 1 ? 75 : 25;
+            const startX = pid === 1 ? 20 : 80, targetX = pid === 1 ? 75 : 25;
             hammer.style.display = 'block';
-            hammer.style.left = startX + '%'; hammer.style.bottom = '30%';
-            
             hammer.animate([
-                { left: startX + '%', bottom: '30%', transform: 'rotate(0deg)' },
+                { left: startX+'%', bottom: '30%', transform: 'rotate(0deg)' },
                 { left: '50%', bottom: '65%', transform: 'rotate(180deg)' },
-                { left: targetX + '%', bottom: '30%', transform: 'rotate(360deg)' }
+                { left: targetX+'%', bottom: '30%', transform: 'rotate(360deg)' }
             ], { duration: 500, easing: 'ease-out' });
 
             setTimeout(() => {
                 hammer.style.display = 'none';
-                if (isWin) {
-                    createFirework(targetX);
-                    applyDamage(pid === 1 ? 2 : 1, currentDmg, true);
-                } else {
-                    showPop(pid, "MISS!");
-                    applyDamage(pid, 1, false);
-                }
+                if(isWin) { createFirework(targetX); applyDamage(pid===1?2:1, currentDmg, true); }
+                else { showPop(pid, "MISS!"); applyDamage(pid, 1, false); }
             }, 500);
         }
 
         function createFirework(x) {
-            const world = document.getElementById('game-world');
             for (let i = 0; i < 12; i++) {
                 const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.backgroundColor = ['#ff0','#f0f','#0ff','#fff'][Math.floor(Math.random()*4)];
-                p.style.left = x + '%'; p.style.bottom = '30%';
-                world.appendChild(p);
-                const angle = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 50;
-                p.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`, opacity: 0 }], { duration: 500 }).onfinish = () => p.remove();
+                p.className = 'particle'; p.style.backgroundColor = '#ff0';
+                p.style.left = x + '%'; p.style.bottom = '35%';
+                document.getElementById('game-world').appendChild(p);
+                const a = Math.random()*Math.PI*2, d = 50+Math.random()*50;
+                p.animate([{opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`,opacity:0}], 500).onfinish=()=>p.remove();
             }
         }
 
-        function applyDamage(pid, val, knockback) {
+        function applyDamage(pid, val, knock) {
             const char = document.getElementById(`char-p${pid}`);
-            char.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg)";
-            if (knockback) {
-                const side = pid === 1 ? 'left' : 'right';
-                char.classList.remove('floating'); char.style[side] = '-40%';
-                setTimeout(() => { char.style.filter = "none"; if (gameState !== 'FINISH') { char.style[side] = '5%'; char.classList.add('floating'); }}, 500);
+            char.style.filter = "brightness(2) sepia(1)";
+            if(knock) {
+                const s = pid===1?'left':'right'; char.style[s] = '-40%';
+                setTimeout(()=> { char.style.filter="none"; if(gameState!=='FINISH') {char.style[s]='5%';} }, 500);
             } else {
-                char.classList.add('shake');
-                setTimeout(() => { char.style.filter = "none"; char.classList.remove('shake'); }, 400);
+                char.classList.add('shake'); setTimeout(()=>{char.style.filter="none"; char.classList.remove('shake');}, 400);
             }
-            if (pid === 1) p1.life -= val; else p2.life -= val;
+            if(pid===1) p1.life-=val; else p2.life-=val;
             updateLifeUI();
-            if (p1.life <= 0 || p2.life <= 0) setTimeout(() => showResult(p1.life <= 0 ? 2 : 1), 500);
-            else if (gameState !== 'FINISH') setTimeout(() => { pickHammer(); startRound(); }, 800);
+            if(p1.life<=0 || p2.life<=0) {
+                gameState = 'FINISH';
+                setTimeout(() => showResult(p1.life<=0 ? 2 : 1), 500);
+            } else {
+                setTimeout(() => { if(gameState==='ANIMATING') { pickHammer(); startRound(); } }, 1000);
+            }
         }
 
         function dodgeMove(pid, isWin) {
             gameState = 'ANIMATING';
-            const char = document.getElementById(`char-p${pid}`), side = pid === 1 ? 'left' : 'right';
-            char.style[side] = '-10%';
+            const char = document.getElementById(`char-p${pid}`), s = pid===1?'left':'right';
+            char.style[s] = '-10%';
             setTimeout(() => {
-                char.style[side] = '5%';
-                if (!isWin) { pickHammer(); startRound(); }
+                char.style[s] = '5%';
+                if(!isWin) { pickHammer(); startRound(); }
                 else { showPop(pid, "MISS!"); applyDamage(pid, 1, false); }
             }, 400);
         }
 
-        function showPop(pid, text) {
-            const pop = document.getElementById(`pop-p${pid}`);
-            pop.textContent = text; pop.style.opacity = '1';
-            setTimeout(() => pop.style.opacity = '0', 800);
+        function showPop(pid, txt) {
+            const el = document.getElementById(`pop-p${pid}`);
+            el.textContent = txt; el.style.opacity = '1';
+            setTimeout(()=>el.style.opacity='0', 800);
         }
 
         function showResult(winner) {
-            gameState = 'FINISH';
             document.getElementById('winner-image').src = `player${winner}_win.svg`;
             document.getElementById('result-screen').style.display = 'flex';
-            setTimeout(() => document.getElementById('win-logo-img').classList.add('show-res'), 100);
-            setTimeout(() => document.getElementById('winner-image').classList.add('show-res'), 400);
+            setTimeout(() => {
+                document.getElementById('win-logo-img').classList.add('show-res');
+                document.getElementById('winner-image').classList.add('show-res');
+            }, 100);
         }
     </script>
 </body>
