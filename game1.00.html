@@ -20,35 +20,24 @@
 
         /* 縦向き検知オーバーレイ */
         #orientation-overlay {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 9999;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); z-index: 9999;
             flex-direction: column; align-items: center; justify-content: center;
             color: white; text-align: center;
         }
-
-        @media (orientation: portrait) {
-            #orientation-overlay { display: flex; }
-        }
-
+        @media (orientation: portrait) { #orientation-overlay { display: flex; } }
         .rotate-icon {
             width: 80px; height: 80px; margin-bottom: 20px;
             border: 4px solid #fff; border-radius: 12px;
             animation: rotateDevice 2s ease-in-out infinite;
-            position: relative;
         }
-        @keyframes rotateDevice {
-            0% { transform: rotate(0deg); }
-            50%, 100% { transform: rotate(-90deg); }
-        }
+        @keyframes rotateDevice { 0% { transform: rotate(0deg); } 50%, 100% { transform: rotate(-90deg); } }
 
         /* サイドパネル */
         .player-side { width: var(--side-width); display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
         .player-ui { height: 40px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #333; }
         .life { color: #ff4444; font-size: 0.8rem; font-weight: bold; }
         .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; padding: 10px 5px; }
-        
         .btn { flex: 1; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 900; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s; cursor: pointer; }
         .btn:active { transform: translateY(2px); box-shadow: none; }
         .btn-hit { background-color: #e63946; }
@@ -61,36 +50,39 @@
         .title-container { display: flex; gap: 0; align-items: center; justify-content: center; width: 100%; height: 100vh; position: relative; }
         .img-title-logo { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out infinite; }
         .img-title-player { width: 48%; height: 100vh; object-fit: contain; animation: charFloat 3s ease-in-out 0.5s infinite; }
+        .start-btn { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); padding: 18px 50px; font-size: 1.5rem; background: #2ed573; border: none; border-radius: 50px; color: #fff; font-weight: bold; box-shadow: 0 6px 0 #1b8a4b; cursor: pointer; z-index: 5010; }
         
-        .start-btn { 
-            position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
-            padding: 18px 50px; font-size: 1.5rem; background: #2ed573; border: none; 
-            border-radius: 50px; color: #fff; font-weight: bold; box-shadow: 0 6px 0 #1b8a4b; 
-            cursor: pointer; z-index: 5010; transition: 0.1s;
-        }
-        .start-btn:active { transform: translateX(-50%) translateY(4px); box-shadow: none; }
-
         .copyright { 
             position: absolute; bottom: 2%; width: 100%; text-align: center; 
-            color: rgba(255,255,255,0.8); font-size: 0.7rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
-            z-index: 5010; white-space: nowrap;
+            color: rgba(255,255,255,0.9); font-size: 1rem; font-weight: bold; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5010; 
         }
 
-        /* キャラクター & エフェクト */
+        /* キャラクター & アニメーション */
         .character { position: absolute; bottom: 5%; width: 45vh; height: 45vh; z-index: 30; transition: left 0.4s cubic-bezier(0.2, 0, 0.2, 1), right 0.4s cubic-bezier(0.2, 0, 0.2, 1), transform 0.2s, filter 0.2s; }
         .character img { width: 100%; height: 100%; object-fit: contain; }
         #char-p2 img { transform: scaleX(-1); }
+
+        .floating { animation: charFloat 2.5s ease-in-out infinite; }
+        @keyframes charFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        
+        .shake { animation: shakeAnim 0.4s ease-in-out; }
+        @keyframes shakeAnim {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
         .hammer-projectile { position: absolute; width: 15vh; height: 15vh; z-index: 50; pointer-events: none; display: none; }
         .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 60; }
 
-        /* リザルト画面 */
+        /* リザルト */
         #result-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 6000; display: none; background: rgba(0,0,0,0.95); flex-direction: row; align-items: center; justify-content: space-evenly; }
         .win-display { display: flex; flex-direction: column; align-items: center; width: 60%; position: relative; height: 100%; }
-        .win-logo { width: 85%; max-width: 460px; height: auto; position: absolute; top: 2%; z-index: 6010; opacity: 0; transform: translateY(-30px); transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .win-logo { width: 85%; max-width: 460px; height: auto; position: absolute; top: -20%; z-index: 6010; opacity: 0; transform: translateY(-30px); transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .winner-img { width: auto; height: 75vh; max-height: 380px; position: absolute; top: 18%; z-index: 6005; opacity: 0; transform: scale(0.8); transition: 0.6s 0.2s; }
         .show-res { opacity: 1 !important; transform: translate(0) scale(1) !important; }
 
-        @keyframes charFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         #countdown-text { font-size: 8rem; font-weight: 900; color: #fff; text-shadow: 5px 5px 0 #000; opacity: 0; transform: scale(2); transition: 0.3s; }
         .count-active { opacity: 1 !important; transform: scale(1) !important; }
         .placard { position: absolute; width: 15vw; height: 22vw; max-width: 100px; max-height: 140px; background: #fff; border: 5px solid #222; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 900; color: #333; top: 15%; opacity: 0; transform: translateY(20px); transition: 0.2s; z-index: 20; }
@@ -184,6 +176,8 @@
             document.getElementById('title-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
             document.querySelectorAll('.show-res').forEach(el => el.classList.remove('show-res'));
+            // パネルを非表示に初期化
+            document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             
             const cp1 = document.getElementById('char-p1');
             const cp2 = document.getElementById('char-p2');
@@ -210,7 +204,7 @@
         }
 
         function startRound() {
-            gameState = 'WAITING';
+            gameState = 'BATTLE';
             document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
             setTimeout(() => {
                 if (gameState === 'FINISH') return;
@@ -219,12 +213,12 @@
                 document.getElementById('card-p1').textContent = p1.num;
                 document.getElementById('card-p2').textContent = p2.num;
                 document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
-                gameState = 'BATTLE';
             }, 1500 + Math.random() * 3000);
         }
 
         function handleAction(pid, action) {
-            if (gameState === 'WAITING') { showPop(pid, "おてつき！"); applyDamage(pid, 1, true); return; }
+            const cardActive = document.querySelector('.placard').classList.contains('active');
+            if (!cardActive) { showPop(pid, "おてつき！"); applyDamage(pid, 1, false); return; }
             if (gameState !== 'BATTLE') return;
             const isWin = (pid === 1) ? (p1.num > p2.num) : (p2.num > p1.num);
             if (action === 'HIT') throwHammer(pid, isWin);
@@ -234,13 +228,12 @@
         function throwHammer(pid, isWin) {
             gameState = 'ANIMATING';
             const hammer = document.getElementById(`hammer-p${pid}`);
-            const startX = pid === 1 ? 20 : 80;
             const targetX = pid === 1 ? 75 : 25;
             hammer.style.display = 'block';
-            hammer.style.left = startX + '%'; hammer.style.bottom = '30%';
+            hammer.style.left = (pid === 1 ? 20 : 80) + '%'; hammer.style.bottom = '30%';
             hammer.animate([
-                { left: startX + '%', bottom: '30%', transform: 'rotate(0deg)' },
-                { left: ((startX + targetX) / 2) + '%', bottom: '60%', transform: 'rotate(180deg)' },
+                { left: (pid === 1 ? 20 : 80) + '%', bottom: '30%', transform: 'rotate(0deg)' },
+                { left: '50%', bottom: '60%', transform: 'rotate(180deg)' },
                 { left: targetX + '%', bottom: '30%', transform: 'rotate(360deg)' }
             ], { duration: 500, easing: 'ease-out' });
 
@@ -251,7 +244,7 @@
                     applyDamage(pid === 1 ? 2 : 1, currentDmg, true);
                 } else {
                     showPop(pid, "MISS!");
-                    applyDamage(pid, 1, true);
+                    applyDamage(pid, 1, false);
                 }
             }, 500);
         }
@@ -259,22 +252,32 @@
         function applyDamage(pid, val, knockback) {
             const char = document.getElementById(`char-p${pid}`);
             char.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg)";
+            
             if (knockback) {
                 const side = pid === 1 ? 'left' : 'right';
+                char.classList.remove('floating');
                 char.style[side] = '-40%';
                 setTimeout(() => {
                     char.style.filter = "none";
-                    if (gameState !== 'FINISH') char.style[side] = '5%';
+                    if (gameState !== 'FINISH') {
+                        char.style[side] = '5%';
+                        char.classList.add('floating');
+                    }
                 }, 500);
             } else {
-                setTimeout(() => char.style.filter = "none", 200);
+                char.classList.add('shake');
+                setTimeout(() => {
+                    char.style.filter = "none";
+                    char.classList.remove('shake');
+                }, 400);
             }
+
             if (pid === 1) p1.life -= val; else p2.life -= val;
             updateLifeUI();
             if (p1.life <= 0 || p2.life <= 0) {
                 setTimeout(() => showResult(p1.life <= 0 ? 2 : 1), 500);
             } else if (gameState !== 'WAITING') {
-                setTimeout(() => { pickHammer(); startRound(); }, 600);
+                setTimeout(() => { pickHammer(); startRound(); }, 800);
             }
         }
 
@@ -286,7 +289,7 @@
             setTimeout(() => {
                 char.style[side] = '5%';
                 if (!isWin) { pickHammer(); startRound(); }
-                else { showPop(pid, "MISS!"); applyDamage(pid, 1, true); }
+                else { showPop(pid, "MISS!"); applyDamage(pid, 1, false); }
             }, 400);
         }
 
