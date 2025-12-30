@@ -6,9 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a1a">
-    
-    <title>Block Territory PWA</title>
-    
+    <title>Block Territory - Hover Fixed</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -17,29 +15,18 @@
             --p1-color: #3498db;
             --p2-color: #e74c3c;
             --bg-color: #1a1a1a;
-            --preview-ok: rgba(255, 255, 255, 0.4);
-            --preview-ng: rgba(255, 0, 0, 0.3);
+            --preview-ok: rgba(255, 255, 255, 0.5); /* プレビュー：白 */
+            --preview-ng: rgba(255, 0, 0, 0.4);   /* プレビュー：赤 */
             --bomb-color: #f1c40f;
             --scorch-color: #0d0d0d;
             --iron-color: #7f8c8d;
         }
 
-        /* 横向き強制オーバーレイ */
         #orientation-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 9999; flex-direction: column;
             justify-content: center; align-items: center; text-align: center;
         }
-        .phone-icon {
-            width: 40px; height: 70px; border: 3px solid white; border-radius: 5px;
-            margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;
-        }
-        @keyframes rotatePhone {
-            0% { transform: rotate(0deg); }
-            50% { transform: rotate(-90deg); }
-            100% { transform: rotate(-90deg); }
-        }
-
         @media screen and (orientation: portrait) {
             #orientation-overlay { display: flex; }
             #game-container { display: none; }
@@ -77,33 +64,25 @@
         }
 
         .cell { background-color: #222; border-radius: 3px; position: relative; overflow: hidden; }
-        .cell.p1 { background-color: var(--p1-color); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
-        .cell.p2 { background-color: var(--p2-color); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+        .cell.p1 { background-color: var(--p1-color); }
+        .cell.p2 { background-color: var(--p2-color); }
+        .cell.hard { background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important; }
         
-        .cell.hard {
-            background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important;
-            border: 1px solid #95a5a6;
-        }
-        .cell.hard::before { content: "•"; position: absolute; top: 1px; left: 1px; font-size: 6px; color: #eee; }
+        /* プレビュー表示用のスタイル */
+        .cell.valid-preview { background-color: var(--preview-ok) !important; box-shadow: inset 0 0 5px #fff; }
+        .cell.invalid-preview { background-color: var(--preview-ng) !important; }
 
-        .cell.scorched { background-color: var(--scorch-color) !important; background-image: radial-gradient(circle, #333 1px, transparent 1px); background-size: 3px 3px; }
+        .cell.scorched { background-color: var(--scorch-color) !important; }
         .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.1rem; }
-
-        .explosion-fx { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; animation: flash 0.8s forwards; }
-        @keyframes flash { 0% { background: #fff; opacity:1; } 100% { background: var(--scorch-color); opacity:0; } }
-        .shake { animation: shake 0.4s ease-in-out; }
-        @keyframes shake { 0%, 100% { transform:translate(0,0); } 25% { transform:translate(-4px, 2px); } 75% { transform:translate(4px, -2px); } }
 
         #boom-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; color: #ffeb3b; opacity: 0; z-index: 100; pointer-events: none;}
         .boom-anim { animation: boom 0.8s ease-out; }
         @keyframes boom { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.5); } }
 
-        .next-box { width: 60px; height: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; touch-action: none; }
+        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; touch-action: none; cursor: grab; }
         .mini-cell { background: transparent; }
         .btn-skip { width: 100%; padding: 6px; font-weight: bold; border-radius: 6px; border: none; background: #555; color: white; font-size: 0.7rem; cursor: pointer; }
-
         #fs-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; cursor: pointer; z-index: 2000; }
-
         #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
@@ -112,53 +91,38 @@
 <button id="fs-btn" onclick="toggleFullScreen()">全画面表示</button>
 
 <div id="orientation-overlay">
-    <div class="phone-icon"></div>
     <p>画面を横向きにしてください</p>
 </div>
 
 <div id="result-overlay">
     <h1 id="winner-text">RESULT</h1>
     <div id="result-scores" style="font-size: 1.5rem; margin-bottom: 20px;"></div>
-    <button style="background: #3498db; color:white; width: 160px; padding: 12px; border-radius:8px; border:none;" onclick="resetGame()">もういちど</button>
+    <button onclick="resetGame()">もういちど</button>
 </div>
 
 <div id="game-container">
     <div id="panel-p1" class="player-panel p1-side">
-        <h2 style="color: var(--p1-color); margin:0; font-size: 1.2rem;">P1</h2>
-        <div id="score-p1" style="font-size: 1rem;">0</div>
+        <h2>P1</h2>
+        <div id="score-p1">0</div>
         <div id="next-p1" class="next-box"></div>
-        <button id="skip-p1" class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p1">3</span>)</button>
+        <button class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p1">3</span>)</button>
     </div>
 
     <div id="board-container">
-        <div id="penalty-text" style="font-size: 0.8rem; color: #f1c40f; font-weight: bold; height: 1.2em;"></div>
+        <div id="penalty-text"></div>
         <div id="board"><div id="boom-text">BOOM!</div></div>
-        <div id="turn-display" style="font-size: 1rem; font-weight: bold;"></div>
+        <div id="turn-display"></div>
     </div>
 
     <div id="panel-p2" class="player-panel p2-side">
-        <h2 style="color: var(--p2-color); margin:0; font-size: 1.2rem;">P2</h2>
-        <div id="score-p2" style="font-size: 1rem;">0</div>
+        <h2>P2</h2>
+        <div id="score-p2">0</div>
         <div id="next-p2" class="next-box"></div>
-        <button id="skip-p2" class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p2">3</span>)</button>
+        <button class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p2">3</span>)</button>
     </div>
 </div>
 
 <script>
-    // --- PWA / Fullscreen Utils ---
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                alert(`Error: ${err.message}`);
-            });
-            document.getElementById('fs-btn').innerText = "解除";
-        } else {
-            document.exitFullscreen();
-            document.getElementById('fs-btn').innerText = "全画面表示";
-        }
-    }
-
-    // --- ゲーム設定 ---
     const ROWS = 5, COLS = 10;
     let board, currentPlayer, scores, passCount, currentPiece, visibleBombs, hiddenBombs, isWait, isHard;
     let skipPenalty = { 1: false, 2: false };
@@ -173,15 +137,16 @@
         board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
         scores = {1: 0, 2: 0}; passCount = {1: 3, 2: 3};
         currentPlayer = 1; isWait = false; skipPenalty = { 1: false, 2: false };
-        document.getElementById('board').innerHTML = '<div id="boom-text">BOOM!</div>';
+        const b = document.getElementById('board');
+        b.innerHTML = '<div id="boom-text">BOOM!</div>';
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell'; cell.id = `cell-${r}-${c}`;
-                document.getElementById('board').appendChild(cell);
+                b.appendChild(cell);
             }
         }
-        placeBombs(); setupControls(1); setupControls(2); spawnPiece(); updateUI();
+        placeBombs(); setupGlobalControls(); spawnPiece(); updateUI();
     }
 
     function placeBombs() {
@@ -194,31 +159,64 @@
         visibleBombs.forEach(b => document.getElementById(`cell-${b.r}-${b.c}`).classList.add('bomb-visible'));
     }
 
-    function setupControls(pNum) {
-        const nextBox = document.getElementById(`next-p${pNum}`);
-        let startX, startY, isDragging = false;
-        nextBox.onpointerdown = (e) => {
-            if (isWait || currentPlayer !== pNum) return;
-            isDragging = true; startX = e.clientX; startY = e.clientY;
-            nextBox.setPointerCapture(e.pointerId);
+    // 操作ロジックの改善
+    function setupGlobalControls() {
+        let isDragging = false;
+        let startX, startY;
+
+        const handleStart = (e) => {
+            if (isWait) return;
+            const targetBox = document.getElementById(`next-p${currentPlayer}`);
+            if (targetBox.contains(e.target)) {
+                isDragging = true;
+                startX = e.clientX || e.touches[0].clientX;
+                startY = e.clientY || e.touches[0].clientY;
+            }
         };
-        window.addEventListener('pointermove', (e) => {
+
+        const handleMove = (e) => {
             if (!isDragging) return;
-            const pos = getBoardPos(e); clearPreview();
-            if (pos) showPreview(pos.r, pos.c);
-        });
-        window.addEventListener('pointerup', (e) => {
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : null);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : null);
+            
+            const pos = getBoardPos(clientX, clientY);
+            clearPreview();
+            if (pos) {
+                showPreview(pos.r, pos.c);
+            }
+        };
+
+        const handleEnd = (e) => {
             if (!isDragging) return;
-            if (Math.hypot(e.clientX - startX, e.clientY - startY) < 15) rotatePiece();
-            else { const pos = getBoardPos(e); if (pos) tryPlace(pos.r, pos.c); }
-            isDragging = false; clearPreview();
-        });
+            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            
+            const dist = Math.hypot(clientX - startX, clientY - startY);
+            if (dist < 15) {
+                rotatePiece();
+            } else {
+                const pos = getBoardPos(clientX, clientY);
+                if (pos) tryPlace(pos.r, pos.c);
+            }
+            isDragging = false;
+            clearPreview();
+        };
+
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchstart', handleStart, {passive:false});
+        window.addEventListener('touchmove', handleMove, {passive:false});
+        window.addEventListener('touchend', handleEnd, {passive:false});
     }
 
-    function getBoardPos(e) {
+    function getBoardPos(clientX, clientY) {
         const rect = document.getElementById('board').getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            return { r: Math.floor((e.clientY - rect.top) / (rect.height / ROWS)), c: Math.floor((e.clientX - rect.left) / (rect.width / COLS)) };
+        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+            return {
+                r: Math.floor((clientY - rect.top) / (rect.height / ROWS)),
+                c: Math.floor((clientX - rect.left) / (rect.width / COLS))
+            };
         }
         return null;
     }
@@ -232,6 +230,22 @@
     function rotatePiece() {
         currentPiece = currentPiece[0].map((_, i) => currentPiece.map(row => row[i]).reverse());
         renderNextPiece();
+    }
+
+    function showPreview(r, c) {
+        const ok = canPlace(r, c, currentPiece);
+        currentPiece.forEach((row, ri) => {
+            row.forEach((val, ci) => {
+                if (val) {
+                    const el = document.getElementById(`cell-${r+ri}-${c+ci}`);
+                    if (el) el.classList.add(ok ? 'valid-preview' : 'invalid-preview');
+                }
+            });
+        });
+    }
+
+    function clearPreview() {
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('valid-preview', 'invalid-preview'));
     }
 
     function tryPlace(r, c) {
@@ -257,23 +271,37 @@
 
     function triggerExplosion(er, ec) {
         isWait = true;
-        const boardEl = document.getElementById('board');
-        const boomText = document.getElementById('boom-text');
-        boardEl.classList.add('shake'); boomText.classList.add('boom-anim');
+        document.getElementById('board').classList.add('shake');
+        document.getElementById('boom-text').classList.add('boom-anim');
         for (let r = er - 1; r <= er + 1; r++) {
             for (let c = ec - 1; c <= ec + 1; c++) {
                 if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
                     const cell = document.getElementById(`cell-${r}-${c}`);
                     if (board[r][c] !== "hard") {
-                        const fx = document.createElement('div'); fx.className = 'explosion-fx'; cell.appendChild(fx);
-                        if (board[r][c] !== 0 && typeof board[r][c] === 'number') { scores[board[r][c]]--; board[r][c] = 0; }
-                        setTimeout(() => { cell.innerHTML = ''; cell.className = 'cell scorched'; 
-                        setTimeout(() => { if (board[r][c] === 0) cell.className = 'cell'; }, 2500); }, 800);
+                        if (board[r][c] !== 0 && typeof board[r][c] === 'number') scores[board[r][c]]--;
+                        board[r][c] = 0;
+                        setTimeout(() => { cell.className = 'cell scorched'; }, 500);
                     }
                 }
             }
         }
-        setTimeout(() => { boardEl.classList.remove('shake'); boomText.classList.remove('boom-anim'); isWait = false; nextTurn(); }, 1200);
+        setTimeout(() => {
+            document.getElementById('board').classList.remove('shake');
+            document.getElementById('boom-text').classList.remove('boom-anim');
+            isWait = false; nextTurn();
+        }, 1200);
+    }
+
+    function canPlace(r, c, shape) {
+        for (let ri = 0; ri < shape.length; ri++) {
+            for (let ci = 0; ci < shape[ri].length; ci++) {
+                if (shape[ri][ci]) {
+                    const tr = r + ri, tc = c + ci;
+                    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS || board[tr][tc] !== 0) return false;
+                }
+            }
+        }
+        return true;
     }
 
     function skipTurn() { if (passCount[currentPlayer] > 0) { passCount[currentPlayer]--; nextTurn(); } }
@@ -290,29 +318,21 @@
         spawnPiece(); updateUI(); checkGameOver();
     }
 
-    function canPlace(r, c, shape) {
-        for (let ri = 0; ri < shape.length; ri++) {
-            for (let ci = 0; ci < shape[ri].length; ci++) {
-                if (shape[ri][ci]) {
-                    const tr = r + ri, tc = c + ci;
-                    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS || board[tr][tc] !== 0) return false;
-                }
-            }
-        }
-        return true;
-    }
-
     function updateUI() {
         document.getElementById('panel-p1').classList.toggle('active', currentPlayer === 1);
         document.getElementById('panel-p2').classList.toggle('active', currentPlayer === 2);
-        document.getElementById('score-p1').innerText = scores[1]; document.getElementById('score-p2').innerText = scores[2];
-        document.getElementById('pass-p1').innerText = passCount[1]; document.getElementById('pass-p2').innerText = passCount[2];
+        document.getElementById('score-p1').innerText = scores[1];
+        document.getElementById('score-p2').innerText = scores[2];
+        document.getElementById('pass-p1').innerText = passCount[1];
+        document.getElementById('pass-p2').innerText = passCount[2];
         const td = document.getElementById('turn-display');
-        td.innerText = `P${currentPlayer}の番`; td.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        td.innerText = `P${currentPlayer}の番`;
+        td.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
     }
 
     function renderNextPiece() {
-        document.getElementById('next-p1').innerHTML = ''; document.getElementById('next-p2').innerHTML = '';
+        const boxes = [document.getElementById('next-p1'), document.getElementById('next-p2')];
+        boxes.forEach(b => b.innerHTML = '');
         const box = document.getElementById(`next-p${currentPlayer}`);
         const color = isHard ? 'var(--iron-color)' : (currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)');
         for (let i = 0; i < 16; i++) box.appendChild(document.createElement('div')).className = 'mini-cell';
@@ -340,21 +360,15 @@
         if (!canMove && passCount[currentPlayer] === 0) {
             document.getElementById('result-overlay').style.display = 'flex';
             document.getElementById('result-scores').innerText = `P1: ${scores[1]} | P2: ${scores[2]}`;
-            document.getElementById('winner-text').innerText = scores[1] > scores[2] ? "P1 WIN!" : scores[1] < scores[2] ? "P2 WIN!" : "DRAW";
+            document.getElementById('winner-text').innerText = scores[1] > scores[2] ? "P1 WIN!" : "P2 WIN!";
         }
     }
 
-    function resetGame() { document.getElementById('result-overlay').style.display = 'none'; init(); }
-    function clearPreview() { document.querySelectorAll('.cell').forEach(e => e.classList.remove('valid-preview', 'invalid-preview')); }
-    function showPreview(r, c) {
-        const ok = canPlace(r, c, currentPiece);
-        currentPiece.forEach((row, ri) => {
-            row.forEach((val, ci) => {
-                const el = document.getElementById(`cell-${r+ri}-${c+ci}`);
-                if (el && val) el.classList.add(ok ? 'valid-preview' : 'invalid-preview');
-            });
-        });
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
     }
+    function resetGame() { document.getElementById('result-overlay').style.display = 'none'; init(); }
 
     init();
 </script>
