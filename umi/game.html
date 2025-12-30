@@ -2,52 +2,34 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a1a">
-    <title>Block Territory - Hover Fixed</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-
+    <title>Block Territory - Fix Edition</title>
     <style>
         :root {
-            --p1-color: #3498db;
-            --p2-color: #e74c3c;
-            --bg-color: #1a1a1a;
-            --preview-ok: rgba(255, 255, 255, 0.5); /* プレビュー：白 */
-            --preview-ng: rgba(255, 0, 0, 0.4);   /* プレビュー：赤 */
-            --bomb-color: #f1c40f;
-            --scorch-color: #0d0d0d;
-            --iron-color: #7f8c8d;
+            --p1-color: #3498db; --p2-color: #e74c3c; --bg-color: #1a1a1a;
+            --preview-ok: rgba(255, 255, 255, 0.5); --preview-ng: rgba(255, 0, 0, 0.4);
+            --iron-color: #7f8c8d; --scorch-color: #0d0d0d;
         }
 
-        #orientation-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center;
-        }
-        @media screen and (orientation: portrait) {
-            #orientation-overlay { display: flex; }
-            #game-container { display: none; }
-        }
+        * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
             margin: 0; padding: 0; background-color: var(--bg-color); color: white;
-            font-family: sans-serif; display: flex; 
-            justify-content: center; align-items: center; height: 100vh; 
-            overflow: hidden; touch-action: none;
+            font-family: sans-serif; display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: none;
         }
 
         #game-container {
-            display: flex; flex-direction: row; align-items: stretch;
-            width: 100vw; height: 100vh; padding: 10px; box-sizing: border-box; gap: 10px;
+            display: flex; flex-direction: row; width: 100vw; height: 100vh;
+            padding: 10px; box-sizing: border-box; gap: 10px;
         }
 
         .player-panel {
-            flex: 1; display: flex; flex-direction: column;
-            justify-content: space-around; align-items: center;
-            background: #2a2a2a; border-radius: 15px; padding: 10px;
+            flex: 1; display: flex; flex-direction: column; justify-content: space-around;
+            align-items: center; background: #2a2a2a; border-radius: 15px; padding: 10px;
             border: 4px solid transparent; transition: all 0.3s; max-width: 140px;
         }
         .player-panel.active { opacity: 1; filter: none; pointer-events: auto; }
@@ -66,38 +48,30 @@
         .cell { background-color: #222; border-radius: 3px; position: relative; overflow: hidden; }
         .cell.p1 { background-color: var(--p1-color); }
         .cell.p2 { background-color: var(--p2-color); }
-        .cell.hard { background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important; }
-        
-        /* プレビュー表示用のスタイル */
+        .cell.hard { background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important; border: 1px solid #95a5a6; }
         .cell.valid-preview { background-color: var(--preview-ok) !important; box-shadow: inset 0 0 5px #fff; }
         .cell.invalid-preview { background-color: var(--preview-ng) !important; }
-
         .cell.scorched { background-color: var(--scorch-color) !important; }
         .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.1rem; }
 
-        #boom-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; color: #ffeb3b; opacity: 0; z-index: 100; pointer-events: none;}
+        #boom-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; color: #ffeb3b; opacity: 0; z-index: 100; pointer-events: none; }
         .boom-anim { animation: boom 0.8s ease-out; }
         @keyframes boom { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.5); } }
 
-        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; touch-action: none; cursor: grab; }
-        .mini-cell { background: transparent; }
+        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; }
         .btn-skip { width: 100%; padding: 6px; font-weight: bold; border-radius: 6px; border: none; background: #555; color: white; font-size: 0.7rem; cursor: pointer; }
-        #fs-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; cursor: pointer; z-index: 2000; }
+        #fs-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; z-index: 2000; }
         #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-<button id="fs-btn" onclick="toggleFullScreen()">全画面表示</button>
-
-<div id="orientation-overlay">
-    <p>画面を横向きにしてください</p>
-</div>
+<button id="fs-btn" onclick="toggleFullScreen()">Fullscreen</button>
 
 <div id="result-overlay">
     <h1 id="winner-text">RESULT</h1>
     <div id="result-scores" style="font-size: 1.5rem; margin-bottom: 20px;"></div>
-    <button onclick="resetGame()">もういちど</button>
+    <button onclick="resetGame()" style="padding:10px 20px;">Rematch</button>
 </div>
 
 <div id="game-container">
@@ -105,20 +79,20 @@
         <h2>P1</h2>
         <div id="score-p1">0</div>
         <div id="next-p1" class="next-box"></div>
-        <button class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p1">3</span>)</button>
+        <button class="btn-skip" onclick="skipTurn()">Skip (<span id="pass-p1">3</span>)</button>
     </div>
 
     <div id="board-container">
-        <div id="penalty-text"></div>
+        <div id="penalty-text" style="height:1.2em; color:#f1c40f; font-weight:bold;"></div>
         <div id="board"><div id="boom-text">BOOM!</div></div>
-        <div id="turn-display"></div>
+        <div id="turn-display" style="font-weight:bold;"></div>
     </div>
 
     <div id="panel-p2" class="player-panel p2-side">
         <h2>P2</h2>
         <div id="score-p2">0</div>
         <div id="next-p2" class="next-box"></div>
-        <button class="btn-skip" onclick="skipTurn()">パス (残<span id="pass-p2">3</span>)</button>
+        <button class="btn-skip" onclick="skipTurn()">Skip (<span id="pass-p2">3</span>)</button>
     </div>
 </div>
 
@@ -146,7 +120,7 @@
                 b.appendChild(cell);
             }
         }
-        placeBombs(); setupGlobalControls(); spawnPiece(); updateUI();
+        placeBombs(); setupControls(); spawnPiece(); updateUI();
     }
 
     function placeBombs() {
@@ -159,55 +133,51 @@
         visibleBombs.forEach(b => document.getElementById(`cell-${b.r}-${b.c}`).classList.add('bomb-visible'));
     }
 
-    // 操作ロジックの改善
-    function setupGlobalControls() {
+    function setupControls() {
         let isDragging = false;
         let startX, startY;
 
-        const handleStart = (e) => {
+        const start = (e) => {
             if (isWait) return;
             const targetBox = document.getElementById(`next-p${currentPlayer}`);
             if (targetBox.contains(e.target)) {
                 isDragging = true;
-                startX = e.clientX || e.touches[0].clientX;
-                startY = e.clientY || e.touches[0].clientY;
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX; startY = touch.clientY;
+                if(e.cancelable) e.preventDefault();
             }
         };
 
-        const handleMove = (e) => {
+        const move = (e) => {
             if (!isDragging) return;
-            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : null);
-            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : null);
-            
-            const pos = getBoardPos(clientX, clientY);
+            const touch = e.touches ? e.touches[0] : e;
+            const pos = getBoardPos(touch.clientX, touch.clientY);
             clearPreview();
-            if (pos) {
-                showPreview(pos.r, pos.c);
-            }
+            if (pos) showPreview(pos.r, pos.c);
+            if(e.cancelable) e.preventDefault();
         };
 
-        const handleEnd = (e) => {
+        const end = (e) => {
             if (!isDragging) return;
-            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            const touch = e.changedTouches ? e.changedTouches[0] : e;
+            const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
             
-            const dist = Math.hypot(clientX - startX, clientY - startY);
-            if (dist < 15) {
+            if (dist < 10) { // タップ判定の感度を向上
                 rotatePiece();
             } else {
-                const pos = getBoardPos(clientX, clientY);
+                const pos = getBoardPos(touch.clientX, touch.clientY);
                 if (pos) tryPlace(pos.r, pos.c);
             }
             isDragging = false;
             clearPreview();
         };
 
-        window.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', handleEnd);
-        window.addEventListener('touchstart', handleStart, {passive:false});
-        window.addEventListener('touchmove', handleMove, {passive:false});
-        window.addEventListener('touchend', handleEnd, {passive:false});
+        window.addEventListener('touchstart', start, {passive:false});
+        window.addEventListener('touchmove', move, {passive:false});
+        window.addEventListener('touchend', end, {passive:false});
+        window.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
     }
 
     function getBoardPos(clientX, clientY) {
@@ -251,6 +221,7 @@
     function tryPlace(r, c) {
         if (!canPlace(r, c, currentPiece)) return;
         let explodedPos = null;
+        
         currentPiece.forEach((row, ri) => {
             row.forEach((val, ci) => {
                 if (val) {
@@ -258,27 +229,39 @@
                     board[tr][tc] = isHard ? "hard" : currentPlayer;
                     scores[currentPlayer]++;
                     document.getElementById(`cell-${tr}-${tc}`).className = `cell ${isHard ? 'hard' : 'p' + currentPlayer}`;
+                    
+                    // 厳密な爆発判定: 配置したマスそのものに爆弾がある場合のみ
                     [visibleBombs, hiddenBombs].forEach(list => {
                         const idx = list.findIndex(b => b.r === tr && b.c === tc);
-                        if(idx !== -1) { explodedPos = {r: tr, c: tc}; list.splice(idx, 1); }
+                        if(idx !== -1) { 
+                            explodedPos = {r: tr, c: tc}; 
+                            list.splice(idx, 1); 
+                        }
                     });
                 }
             });
         });
-        if (explodedPos) { skipPenalty[currentPlayer] = true; triggerExplosion(explodedPos.r, explodedPos.c); }
-        else { nextTurn(); }
+
+        if (explodedPos) {
+            skipPenalty[currentPlayer] = true;
+            triggerExplosion(explodedPos.r, explodedPos.c);
+        } else {
+            nextTurn();
+        }
     }
 
     function triggerExplosion(er, ec) {
         isWait = true;
         document.getElementById('board').classList.add('shake');
         document.getElementById('boom-text').classList.add('boom-anim');
+        
+        // 爆風範囲（3x3）
         for (let r = er - 1; r <= er + 1; r++) {
             for (let c = ec - 1; c <= ec + 1; c++) {
                 if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
                     const cell = document.getElementById(`cell-${r}-${c}`);
                     if (board[r][c] !== "hard") {
-                        if (board[r][c] !== 0 && typeof board[r][c] === 'number') scores[board[r][c]]--;
+                        if (typeof board[r][c] === 'number' && board[r][c] !== 0) scores[board[r][c]]--;
                         board[r][c] = 0;
                         setTimeout(() => { cell.className = 'cell scorched'; }, 500);
                     }
@@ -310,7 +293,7 @@
         let nextPlayer = (currentPlayer === 1) ? 2 : 1;
         if (skipPenalty[nextPlayer]) {
             skipPenalty[nextPlayer] = false;
-            document.getElementById('penalty-text').innerText = `P${nextPlayer}休み！P${currentPlayer}の連続手番`;
+            document.getElementById('penalty-text').innerText = `P${nextPlayer} STUNNED! P${currentPlayer} Turn Again`;
         } else {
             document.getElementById('penalty-text').innerText = "";
             currentPlayer = nextPlayer;
@@ -326,13 +309,12 @@
         document.getElementById('pass-p1').innerText = passCount[1];
         document.getElementById('pass-p2').innerText = passCount[2];
         const td = document.getElementById('turn-display');
-        td.innerText = `P${currentPlayer}の番`;
+        td.innerText = `P${currentPlayer} TURN`;
         td.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
     }
 
     function renderNextPiece() {
-        const boxes = [document.getElementById('next-p1'), document.getElementById('next-p2')];
-        boxes.forEach(b => b.innerHTML = '');
+        [1, 2].forEach(p => document.getElementById(`next-p${p}`).innerHTML = '');
         const box = document.getElementById(`next-p${currentPlayer}`);
         const color = isHard ? 'var(--iron-color)' : (currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)');
         for (let i = 0; i < 16; i++) box.appendChild(document.createElement('div')).className = 'mini-cell';
