@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Number Hammer: Final Fix</title>
+    <style>
+        :root { --side-width: 90px; }
+        body { 
+            margin: 0; padding: 0; background-color: #111; 
+            font-family: 'Hiragino Kaku Gothic ProN', sans-serif; 
+            overflow: hidden; touch-action: none; display: flex; height: 100vh; width: 100vw;
+        }
+
+        .bg-style { 
+            background-color: #87ceeb; background-image: url('cloud_bg.png'); 
+            background-size: cover; background-position: center; 
+        }
+
+        /* 左右パネル */
+        .player-side { 
+            width: var(--side-width); display: flex; flex-direction: column; 
+            background: rgba(0, 0, 0, 0.9); z-index: 100; flex-shrink: 0;
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+        }
+        .player-side:first-child { border-right: 2px solid #444; }
+        .player-side:last-child { border-left: 2px solid #444; }
+        .player-ui { height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #333; }
+        .life { color: #ff4444; font-size: 0.9rem; font-weight: bold; }
+        .controls { flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 15px 8px; }
+        
+        .btn { 
+            flex: 1; border: none; border-radius: 15px; font-size: 1.2rem; font-weight: 900; color: white; 
+            box-shadow: 0 6px 0 rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; 
+            writing-mode: vertical-rl; text-orientation: upright; width: 100%; transition: 0.1s; 
+            cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+        .btn-hit { background-color: #e63946; }
+        .btn-dodge { background-color: #457b9d; }
+
+        /* 中央ワールド */
+        #game-world { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; }
+
+        /* タイトル画面 */
+        #title-screen { 
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            z-index: 5000; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; 
+        }
+        .title-container { display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 30px; width: 90%; }
+        .img-title-logo { width: 45%; height: auto; animation: titleFloat 3s ease-in-out infinite; }
+        .img-title-player { width: 40%; height: auto; animation: titleFloat 3.5s ease-in-out infinite; }
+        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* キャラクター */
+        .character { position: absolute; bottom: -2%; width: 50vh; height: 50vh; z-index: 30; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .character img { width: 100%; height: 100%; object-fit: contain; }
+        #char-p1 { left: -100%; }
+        #char-p2 { right: -100%; } 
+        #char-p2 img { transform: scaleX(-1); }
+        .floating { animation: floating 2.5s ease-in-out infinite; }
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+
+        /* リザルト（演出順序変更） */
+        #result-screen { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 6000; display: none; background: rgba(0,0,0,0.92); flex-direction: column; align-items: center; justify-content: center; }
+        .win-display { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 30px; position: relative; }
+        
+        .winner-img { width: 280px; height: auto; opacity: 0; transform: scale(0.5); }
+        .win-logo { width: 180px; height: auto; opacity: 0; transform: translateY(-20px); }
+
+        /* リザルト用アニメーション */
+        .pop-winner { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .drop-win-logo { animation: dropIn 0.5s ease-out 0.5s forwards; } /* 0.5s遅れて表示 */
+
+        @keyframes popIn { to { opacity: 1; transform: scale(1); } }
+        @keyframes dropIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* 共通設定 */
+        .placard { position: absolute; width: 15vw; height: 22vw; max-width: 90px; background: #fff; border: 5px solid #222; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: 900; color: #333; top: 20%; opacity: 0; transform: translateY(20px); transition: 0.2s; z-index: 20; }
+        .placard.active { opacity: 1; transform: translateY(0); }
+        #card-p1 { left: 10%; } #card-p2 { right: 10%; }
+        .main-btn { padding: 15px 40px; font-size: 1.3rem; background:#2ed573; border:none; border-radius:40px; color:#fff; font-weight: bold; box-shadow: 0 4px 0 #1b8a4b; cursor: pointer; }
+        .copyright { position: absolute; bottom: 15px; width: 100%; text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+    </style>
+</head>
+<body>
+    <div id="title-screen" class="bg-style">
+        <div class="title-container">
+            <img src="title_logo.svg" class="img-title-logo">
+            <img src="title_player.svg" class="img-title-player">
+        </div>
+        <button class="main-btn" onclick="startGame()">ゲームスタート</button>
+        <div class="copyright">©cosmos Inc. ©YoshidaStudio ©PANICPUMPKIN</div>
+    </div>
+
+    <div class="player-side">
+        <div class="player-ui"><div class="life" id="life-p1"></div></div>
+        <div class="controls">
+            <button class="btn btn-hit" onpointerdown="handleAction(1, 'HIT')">たたく</button>
+            <button class="btn btn-dodge" onpointerdown="handleAction(1, 'DODGE')">さける</button>
+        </div>
+    </div>
+    
+    <div id="game-world" class="bg-style">
+        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 150; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div style="background: rgba(0,0,0,0.85); color: white; padding: 5px 20px; border-radius: 50px; border: 2px solid #ffd700; display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size:0.6rem; color:#ffd700; margin-bottom:2px;">NEXT HAMMER</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img id="ui-hammer-img" src="hammer1.svg" style="width:25px; height:25px;">
+                    <div id="ui-hammer-dmg" style="color:#ff4d4d; font-size:1.2rem; font-weight:900;">1</div>
+                </div>
+            </div>
+            <div style="width: 40px; height: 40px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 0 #ccc; cursor: pointer; border: 2px solid #333;" onclick="location.reload()">🏠</div>
+        </div>
+
+        <div id="card-p1" class="placard">?</div>
+        <div id="card-p2" class="placard">?</div>
+        
+        <div id="char-p1" class="character floating"><img src="player1.svg"></div>
+        <div id="char-p2" class="character floating"><img src="player2.svg"></div>
+        
+        <div id="pop-p1" style="position:absolute; left:15%; top:12%; font-size:1.5rem; font-weight:bold; opacity:0; z-index:200; text-shadow:2px 2px 0 #000;"></div>
+        <div id="pop-p2" style="position:absolute; right:15%; top:12%; font-size:1.5rem; font-weight:bold; opacity:0; z-index:200; text-shadow:2px 2px 0 #000;"></div>
+    </div>
+
+    <div class="player-side">
+        <div class="player-ui"><div class="life" id="life-p2"></div></div>
+        <div class="controls">
+            <button class="btn btn-hit" onpointerdown="handleAction(2, 'HIT')">たたく</button>
+            <button class="btn btn-dodge" onpointerdown="handleAction(2, 'DODGE')">さける</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <div class="win-display">
+            <img id="winner-image" src="" class="winner-img">
+            <img id="win-logo-img" src="win.svg" class="win-logo">
+        </div>
+        <button class="main-btn" onclick="startGame()">もういちど遊ぶ</button>
+        <button style="background:none; border:1px solid #fff; color:#fff; margin-top:15px; padding:10px 20px; border-radius:20px; cursor:pointer;" onclick="location.reload()">タイトルへ</button>
+    </div>
+
+    <script>
+        const HAMMER_DATA = [{ dmg: 1, file: "hammer1.svg" }, { dmg: 2, file: "hammer2.svg" }, { dmg: 3, file: "hammer3.svg" }];
+        let p1 = { life: 6, num: 0 }, p2 = { life: 6, num: 0 };
+        let gameState = 'TITLE';
+        let roundTimer = null;
+        let currentDmg = 1;
+
+        function pickHammer() {
+            const r = Math.random();
+            const idx = r < 0.6 ? 0 : r < 0.9 ? 1 : 2;
+            currentDmg = HAMMER_DATA[idx].dmg;
+            document.getElementById('ui-hammer-img').src = HAMMER_DATA[idx].file;
+            document.getElementById('ui-hammer-dmg').textContent = currentDmg;
+        }
+
+        function startGame() {
+            if (roundTimer) clearTimeout(roundTimer);
+            p1.life = 6; p2.life = 6;
+            updateLifeUI();
+            
+            // UIのリセット
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('winner-image').classList.remove('pop-winner');
+            document.getElementById('win-logo-img').classList.remove('drop-win-logo');
+            
+            // キャラクターを画面内に戻す
+            document.getElementById('char-p1').style.left = '5%';
+            document.getElementById('char-p2').style.right = '5%';
+            
+            pickHammer();
+            gameState = 'WAITING';
+            startRound();
+        }
+
+        function startRound() {
+            if (roundTimer) clearTimeout(roundTimer);
+            document.querySelectorAll('.placard').forEach(p => p.classList.remove('active'));
+            
+            const wait = 1000 + Math.random() * 9000;
+            roundTimer = setTimeout(() => {
+                p1.num = Math.floor(Math.random() * 100);
+                p2.num = Math.floor(Math.random() * 100);
+                if (p1.num === p2.num) p1.num++; 
+                document.getElementById('card-p1').textContent = p1.num;
+                document.getElementById('card-p2').textContent = p2.num;
+                document.querySelectorAll('.placard').forEach(p => p.classList.add('active'));
+                gameState = 'BATTLE';
+            }, wait);
+        }
+
+        function handleAction(pid, action) {
+            if (gameState === 'WAITING') {
+                shakeCharacter(pid, "おてつき！");
+                damage(pid, 1); return;
+            }
+            if (gameState !== 'BATTLE') return;
+
+            const isWin = (pid === 1) ? (p1.num > p2.num) : (p2.num > p1.num);
+            if (action === 'HIT') {
+                if (isWin) damage(pid === 1 ? 2 : 1, currentDmg);
+                else { shakeCharacter(pid, "MISS!"); damage(pid, 1); }
+            } else { 
+                if (!isWin) { pickHammer(); startRound(); }
+                else { shakeCharacter(pid, "MISS!"); damage(pid, 1); }
+            }
+        }
+
+        function shakeCharacter(pid, text) {
+            const char = document.getElementById(`char-p${pid}`);
+            const pop = document.getElementById(`pop-p${pid}`);
+            char.classList.add('shake-vibe');
+            pop.textContent = text; pop.style.opacity = '1'; pop.style.color = "#ff4444";
+            setTimeout(() => { char.classList.remove('shake-vibe'); pop.style.opacity = '0'; }, 800);
+        }
+
+        function damage(pid, val) {
+            if (gameState === 'FINISH') return;
+            if (pid === 1) p1.life -= val; else p2.life -= val;
+            updateLifeUI();
+            if (p1.life <= 0 || p2.life <= 0) showResult(p1.life <= 0 ? 2 : 1);
+            else { pickHammer(); startRound(); }
+        }
+
+        function updateLifeUI() {
+            document.getElementById('life-p1').textContent = "❤".repeat(Math.max(0, p1.life));
+            document.getElementById('life-p2').textContent = "❤".repeat(Math.max(0, p2.life));
+        }
+
+        function showResult(winner) {
+            gameState = 'FINISH';
+            if (roundTimer) clearTimeout(roundTimer);
+            
+            const res = document.getElementById('result-screen');
+            const winImg = document.getElementById('winner-image');
+            const winLogo = document.getElementById('win-logo-img');
+            
+            winImg.src = `player${winner}_win.svg`;
+            res.style.display = 'flex';
+            
+            // アニメーション適用（勝者画像 → ロゴの順）
+            setTimeout(() => winImg.classList.add('pop-winner'), 100);
+            setTimeout(() => winLogo.classList.add('drop-win-logo'), 200);
+        }
+    </script>
+</body>
+</html>
