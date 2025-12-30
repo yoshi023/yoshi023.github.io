@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Territory - Scorched Earth Edition</title>
+    <title>Block Territory - Landscape Only</title>
     <style>
         :root {
             --p1-color: #3498db;
@@ -12,7 +12,30 @@
             --preview-ok: rgba(255, 255, 255, 0.4);
             --preview-ng: rgba(255, 0, 0, 0.3);
             --bomb-color: #f1c40f;
-            --scorch-color: #0d0d0d; /* 焦げた色 */
+            --scorch-color: #0d0d0d;
+            --iron-color: #7f8c8d;
+        }
+
+        /* 横向き強制オーバーレイ */
+        #orientation-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .phone-icon {
+            width: 50px; height: 80px; border: 3px solid white; border-radius: 5px;
+            margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;
+        }
+        @keyframes rotatePhone {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(-90deg); }
+        }
+
+        /* 縦向きの時だけオーバーレイを表示 */
+        @media screen and (orientation: portrait) {
+            #orientation-overlay { display: flex; }
+            #game-container { display: none; }
         }
 
         body {
@@ -30,78 +53,62 @@
         .player-panel {
             flex: 1; display: flex; flex-direction: column;
             justify-content: space-around; align-items: center;
-            background: #2a2a2a; border-radius: 15px; padding: 15px;
-            border: 4px solid transparent; transition: all 0.3s; max-width: 180px;
+            background: #2a2a2a; border-radius: 15px; padding: 10px;
+            border: 4px solid transparent; transition: all 0.3s; max-width: 150px;
         }
         .player-panel.p1-side.active { border-color: var(--p1-color); box-shadow: 0 0 15px var(--p1-color); }
         .player-panel.p2-side.active { border-color: var(--p2-color); box-shadow: 0 0 15px var(--p2-color); }
-        .player-panel:not(.active) { opacity: 0.4; filter: grayscale(0.6); pointer-events: none; }
+        .player-panel:not(.active) { opacity: 0.3; filter: grayscale(0.8); pointer-events: none; }
 
-        #board-container { flex: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+        #board-container { flex: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; }
         #board {
             display: grid; grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: repeat( ROWS_PLACEHOLDER, 1fr); gap: 3px;
+            grid-template-rows: repeat(5, 1fr); gap: 2px;
             background-color: #333; border: 4px solid #444;
             width: 100%; aspect-ratio: 2 / 1; position: relative;
         }
 
-        .cell { background-color: #222; border-radius: 4px; pointer-events: none; position: relative; overflow: hidden; transition: background-color 0.5s; }
+        .cell { background-color: #222; border-radius: 4px; pointer-events: none; position: relative; overflow: hidden; }
         .cell.p1 { background-color: var(--p1-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         .cell.p2 { background-color: var(--p2-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         
-        /* 焦げ跡の表現 */
-        .cell.scorched {
-            background-color: var(--scorch-color) !important;
-            background-image: radial-gradient(circle, #333 1px, transparent 1px);
-            background-size: 4px 4px;
-            box-shadow: inset 0 0 15px #000;
+        .cell.hard {
+            background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important;
+            border: 1px solid #95a5a6; box-shadow: inset 0 0 5px #fff;
         }
+        .cell.hard::before, .cell.hard::after { content: "•"; position: absolute; font-size: 8px; color: #ecf0f1; }
+        .cell.hard::before { top: 2px; left: 2px; } .cell.hard::after { bottom: 2px; right: 2px; }
 
-        .cell.valid-preview { background-color: var(--preview-ok) !important; }
-        .cell.invalid-preview { background-color: var(--preview-ng) !important; }
-        .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; z-index: 5; }
+        .cell.scorched { background-color: var(--scorch-color) !important; background-image: radial-gradient(circle, #333 1px, transparent 1px); background-size: 4px 4px; }
+        .cell.bomb-visible::after { content: "💣"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; }
 
-        /* 爆発エフェクト */
-        @keyframes explosion-flash-anim {
-            0% { background-color: #fff; transform: scale(1); opacity: 1; }
-            30% { background-color: #ff9800; transform: scale(1.3); }
-            100% { background-color: var(--scorch-color); transform: scale(1); opacity: 1; }
-        }
-        .explosion-fx {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; animation: explosion-flash-anim 0.8s forwards;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translate(0,0); }
-            20% { transform: translate(-8px, 5px); }
-            40% { transform: translate(8px, -5px); }
-            60% { transform: translate(-8px, -5px); }
-            80% { transform: translate(8px, 5px); }
-        }
+        .explosion-fx { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; animation: flash 0.8s forwards; }
+        @keyframes flash { 0% { background: #fff; opacity:1; } 100% { background: var(--scorch-color); opacity:0; } }
         .shake { animation: shake 0.4s ease-in-out; }
+        @keyframes shake { 0%, 100% { transform:translate(0,0); } 20%, 60% { transform:translate(-5px, 3px); } 40%, 80% { transform:translate(5px, -3px); } }
 
-        #boom-text {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 4rem; font-weight: bold; color: #ffeb3b; text-shadow: 0 0 20px #f44336;
-            pointer-events: none; opacity: 0; z-index: 100;
-        }
+        #boom-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: bold; color: #ffeb3b; opacity: 0; z-index: 100; pointer-events: none;}
         .boom-anim { animation: boom 0.8s ease-out; }
-        @keyframes boom { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } }
+        @keyframes boom { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.5); } }
 
-        .next-box { width: 80px; height: 80px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: #111; padding: 8px; border-radius: 10px; cursor: pointer; touch-action: none; }
+        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: #111; padding: 5px; border-radius: 8px; touch-action: none; }
         .mini-cell { background: transparent; }
-        .btn-skip { width: 100%; padding: 10px; font-weight: bold; border-radius: 8px; border: none; background: #555; color: white; cursor: pointer; }
+        .btn-skip { width: 100%; padding: 8px; font-weight: bold; border-radius: 8px; border: none; background: #555; color: white; font-size: 0.8rem; }
 
         #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
+<div id="orientation-overlay">
+    <div class="phone-icon"></div>
+    <p>画面を横向きにしてください</p>
+</div>
+
 <div id="result-overlay">
     <h1 id="winner-text">RESULT</h1>
     <div id="result-scores" style="font-size: 1.5rem; margin-bottom: 20px;"></div>
-    <button style="background: #3498db; color:white; width: 200px; padding: 15px; border-radius:10px; border:none;" onclick="resetGame()">もういちど</button>
+    <button style="background: #3498db; color:white; width: 180px; padding: 12px; border-radius:8px; border:none;" onclick="resetGame()">もういちど</button>
 </div>
 
 <div id="game-container">
@@ -113,11 +120,9 @@
     </div>
 
     <div id="board-container">
-        <div id="penalty-text" style="font-size: 1rem; color: #f1c40f; font-weight: bold; height: 1.5em; text-align:center;"></div>
-        <div id="board">
-            <div id="boom-text">BOOM!</div>
-        </div>
-        <div id="turn-display" style="font-size: 1.2rem; font-weight: bold;"></div>
+        <div id="penalty-text" style="font-size: 0.9rem; color: #f1c40f; font-weight: bold; height: 1.2em;"></div>
+        <div id="board"><div id="boom-text">BOOM!</div></div>
+        <div id="turn-display" style="font-size: 1.1rem; font-weight: bold;"></div>
     </div>
 
     <div id="panel-p2" class="player-panel p2-side">
@@ -129,8 +134,9 @@
 </div>
 
 <script>
+    // --- ゲーム設定 ---
     const ROWS = 5, COLS = 10;
-    let board, currentPlayer, scores, passCount, currentPiece, visibleBombs, hiddenBombs, isWait;
+    let board, currentPlayer, scores, passCount, currentPiece, visibleBombs, hiddenBombs, isWait, isHard;
     let skipPenalty = { 1: false, 2: false };
 
     const SHAPES = [
@@ -141,30 +147,17 @@
 
     function init() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-        scores = {1: 0, 2: 0};
-        passCount = {1: 3, 2: 3};
-        currentPlayer = 1;
-        isWait = false;
-        skipPenalty = { 1: false, 2: false };
-        
-        const boardEl = document.getElementById('board');
-        boardEl.style.gridTemplateRows = `repeat(${ROWS}, 1fr)`;
-        boardEl.innerHTML = '<div id="boom-text">BOOM!</div>';
-
+        scores = {1: 0, 2: 0}; passCount = {1: 3, 2: 3};
+        currentPlayer = 1; isWait = false; skipPenalty = { 1: false, 2: false };
+        document.getElementById('board').innerHTML = '<div id="boom-text">BOOM!</div>';
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.id = `cell-${r}-${c}`;
-                boardEl.appendChild(cell);
+                cell.className = 'cell'; cell.id = `cell-${r}-${c}`;
+                document.getElementById('board').appendChild(cell);
             }
         }
-        
-        placeBombs();
-        setupControls(1);
-        setupControls(2);
-        spawnPiece();
-        updateUI();
+        placeBombs(); setupControls(1); setupControls(2); spawnPiece(); updateUI();
     }
 
     function placeBombs() {
@@ -173,54 +166,42 @@
             const pos = { r: Math.floor(Math.random()*ROWS), c: Math.floor(Math.random()*COLS) };
             if(!positions.some(p => p.r === pos.r && p.c === pos.c)) positions.push(pos);
         }
-        visibleBombs = [positions[0], positions[1]];
-        hiddenBombs = [positions[2], positions[3]];
+        visibleBombs = [positions[0], positions[1]]; hiddenBombs = [positions[2], positions[3]];
         visibleBombs.forEach(b => document.getElementById(`cell-${b.r}-${b.c}`).classList.add('bomb-visible'));
     }
 
     function setupControls(pNum) {
         const nextBox = document.getElementById(`next-p${pNum}`);
         let startX, startY, isDragging = false;
-
         nextBox.onpointerdown = (e) => {
             if (isWait || currentPlayer !== pNum) return;
             isDragging = true; startX = e.clientX; startY = e.clientY;
             nextBox.setPointerCapture(e.pointerId);
         };
-
         window.addEventListener('pointermove', (e) => {
             if (!isDragging) return;
-            const pos = getBoardPos(e);
-            clearPreview();
+            const pos = getBoardPos(e); clearPreview();
             if (pos) showPreview(pos.r, pos.c);
         });
-
         window.addEventListener('pointerup', (e) => {
             if (!isDragging) return;
-            const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
-            if (dist < 15) rotatePiece();
-            else {
-                const pos = getBoardPos(e);
-                if (pos) tryPlace(pos.r, pos.c);
-            }
-            isDragging = false;
-            clearPreview();
+            if (Math.hypot(e.clientX - startX, e.clientY - startY) < 15) rotatePiece();
+            else { const pos = getBoardPos(e); if (pos) tryPlace(pos.r, pos.c); }
+            isDragging = false; clearPreview();
         });
     }
 
     function getBoardPos(e) {
         const rect = document.getElementById('board').getBoundingClientRect();
         if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            return {
-                r: Math.floor((e.clientY - rect.top) / (rect.height / ROWS)),
-                c: Math.floor((e.clientX - rect.left) / (rect.width / COLS))
-            };
+            return { r: Math.floor((e.clientY - rect.top) / (rect.height / ROWS)), c: Math.floor((e.clientX - rect.left) / (rect.width / COLS)) };
         }
         return null;
     }
 
     function spawnPiece() {
         currentPiece = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        isHard = Math.random() < 0.15;
         renderNextPiece();
     }
 
@@ -231,16 +212,14 @@
 
     function tryPlace(r, c) {
         if (!canPlace(r, c, currentPiece)) return;
-
         let explodedPos = null;
         currentPiece.forEach((row, ri) => {
             row.forEach((val, ci) => {
                 if (val) {
                     const tr = r + ri, tc = c + ci;
-                    board[tr][tc] = currentPlayer;
+                    board[tr][tc] = isHard ? "hard" : currentPlayer;
                     scores[currentPlayer]++;
-                    document.getElementById(`cell-${tr}-${tc}`).className = `cell p${currentPlayer}`;
-                    
+                    document.getElementById(`cell-${tr}-${tc}`).className = `cell ${isHard ? 'hard' : 'p' + currentPlayer}`;
                     [visibleBombs, hiddenBombs].forEach(list => {
                         const idx = list.findIndex(b => b.r === tr && b.c === tc);
                         if(idx !== -1) { explodedPos = {r: tr, c: tc}; list.splice(idx, 1); }
@@ -248,95 +227,43 @@
                 }
             });
         });
-
-        if (explodedPos) {
-            skipPenalty[currentPlayer] = true;
-            triggerExplosion(explodedPos.r, explodedPos.c);
-        } else {
-            nextTurn();
-        }
+        if (explodedPos) { skipPenalty[currentPlayer] = true; triggerExplosion(explodedPos.r, explodedPos.c); }
+        else { nextTurn(); }
     }
 
     function triggerExplosion(er, ec) {
         isWait = true;
         const boardEl = document.getElementById('board');
         const boomText = document.getElementById('boom-text');
-
-        boardEl.classList.add('shake');
-        boomText.classList.add('boom-anim');
-
+        boardEl.classList.add('shake'); boomText.classList.add('boom-anim');
         for (let r = er - 1; r <= er + 1; r++) {
             for (let c = ec - 1; c <= ec + 1; c++) {
                 if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
                     const cell = document.getElementById(`cell-${r}-${c}`);
-                    const owner = board[r][c];
-                    
-                    // エフェクト生成
-                    const fx = document.createElement('div');
-                    fx.className = 'explosion-fx';
-                    cell.appendChild(fx);
-
-                    if (owner !== 0) {
-                        scores[owner]--;
-                        board[r][c] = 0;
+                    if (board[r][c] !== "hard") {
+                        const fx = document.createElement('div'); fx.className = 'explosion-fx'; cell.appendChild(fx);
+                        if (board[r][c] !== 0) { scores[board[r][c]]--; board[r][c] = 0; }
+                        setTimeout(() => { cell.innerHTML = ''; cell.className = 'cell scorched'; 
+                        setTimeout(() => { if (board[r][c] === 0) cell.className = 'cell'; }, 2500); }, 800);
                     }
-
-                    // 0.8秒後に焦げ跡クラスを付与し、さらに3秒後に焦げ跡を消す
-                    setTimeout(() => {
-                        cell.innerHTML = '';
-                        cell.className = 'cell scorched';
-                        setTimeout(() => {
-                            if (board[r][c] === 0) cell.className = 'cell';
-                        }, 3000);
-                    }, 800);
                 }
             }
         }
-
-        setTimeout(() => {
-            boardEl.classList.remove('shake');
-            boomText.classList.remove('boom-anim');
-            isWait = false;
-            nextTurn(); 
-        }, 1200);
+        setTimeout(() => { boardEl.classList.remove('shake'); boomText.classList.remove('boom-anim'); isWait = false; nextTurn(); }, 1200);
     }
 
-    function skipTurn() {
-        if (passCount[currentPlayer] > 0) {
-            passCount[currentPlayer]--;
-            nextTurn();
-        }
-    }
+    function skipTurn() { if (passCount[currentPlayer] > 0) { passCount[currentPlayer]--; nextTurn(); } }
 
     function nextTurn() {
         let nextPlayer = (currentPlayer === 1) ? 2 : 1;
         if (skipPenalty[nextPlayer]) {
             skipPenalty[nextPlayer] = false;
-            document.getElementById('penalty-text').innerText = `P${nextPlayer} 休みの間、P${currentPlayer} の連続攻撃！`;
+            document.getElementById('penalty-text').innerText = `P${nextPlayer}休み！P${currentPlayer}の連続攻撃`;
         } else {
             document.getElementById('penalty-text').innerText = "";
             currentPlayer = nextPlayer;
         }
-        spawnPiece();
-        updateUI();
-        checkGameOver();
-    }
-
-    function checkGameOver() {
-        const isFull = board.every(row => row.every(cell => cell !== 0));
-        let canMove = false;
-        let tempPiece = JSON.parse(JSON.stringify(currentPiece));
-        for (let rot = 0; rot < 4; rot++) {
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    if (canPlace(r, c, tempPiece)) { canMove = true; break; }
-                }
-                if (canMove) break;
-            }
-            if (canMove) break;
-            tempPiece = tempPiece[0].map((_, i) => tempPiece.map(row => row[i]).reverse());
-        }
-        if (isFull || (!canMove && passCount[currentPlayer] === 0)) showResult();
+        spawnPiece(); updateUI(); checkGameOver();
     }
 
     function canPlace(r, c, shape) {
@@ -354,38 +281,43 @@
     function updateUI() {
         document.getElementById('panel-p1').className = `player-panel p1-side ${currentPlayer === 1 ? 'active' : ''}`;
         document.getElementById('panel-p2').className = `player-panel p2-side ${currentPlayer === 2 ? 'active' : ''}`;
-        document.getElementById('score-p1').innerText = scores[1];
-        document.getElementById('score-p2').innerText = scores[2];
-        document.getElementById('pass-p1').innerText = passCount[1];
-        document.getElementById('pass-p2').innerText = passCount[2];
-        const turnDisplay = document.getElementById('turn-display');
-        turnDisplay.innerText = `P${currentPlayer}の番`;
-        turnDisplay.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        document.getElementById('score-p1').innerText = scores[1]; document.getElementById('score-p2').innerText = scores[2];
+        document.getElementById('pass-p1').innerText = passCount[1]; document.getElementById('pass-p2').innerText = passCount[2];
+        const td = document.getElementById('turn-display');
+        td.innerText = `P${currentPlayer}の番`; td.style.color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
     }
 
     function renderNextPiece() {
-        document.getElementById('next-p1').innerHTML = '';
-        document.getElementById('next-p2').innerHTML = '';
+        document.getElementById('next-p1').innerHTML = ''; document.getElementById('next-p2').innerHTML = '';
         const box = document.getElementById(`next-p${currentPlayer}`);
-        box.innerHTML = '';
-        const color = currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        const color = isHard ? 'var(--iron-color)' : (currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)');
         for (let i = 0; i < 16; i++) box.appendChild(document.createElement('div')).className = 'mini-cell';
         currentPiece.forEach((row, ri) => {
             row.forEach((val, ci) => {
                 if (val) {
                     const target = box.children[ri * 4 + ci];
-                    if(target) target.style.backgroundColor = color;
+                    if(target) { target.style.backgroundColor = color; if(isHard) target.classList.add('hard'); }
                 }
             });
         });
     }
 
-    function showResult() {
-        const overlay = document.getElementById('result-overlay');
-        overlay.style.display = 'flex';
-        document.getElementById('result-scores').innerText = `P1: ${scores[1]} | P2: ${scores[2]}`;
-        const winTxt = document.getElementById('winner-text');
-        winTxt.innerText = scores[1] > scores[2] ? "P1 WIN!" : scores[1] < scores[2] ? "P2 WIN!" : "DRAW";
+    function checkGameOver() {
+        let canMove = false;
+        let tempPiece = JSON.parse(JSON.stringify(currentPiece));
+        for (let rot = 0; rot < 4; rot++) {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) { if (canPlace(r, c, tempPiece)) { canMove = true; break; } }
+                if (canMove) break;
+            }
+            if (canMove) break;
+            tempPiece = tempPiece[0].map((_, i) => tempPiece.map(row => row[i]).reverse());
+        }
+        if (!canMove && passCount[currentPlayer] === 0) {
+            document.getElementById('result-overlay').style.display = 'flex';
+            document.getElementById('result-scores').innerText = `P1: ${scores[1]} | P2: ${scores[2]}`;
+            document.getElementById('winner-text').innerText = scores[1] > scores[2] ? "P1 WIN!" : scores[1] < scores[2] ? "P2 WIN!" : "DRAW";
+        }
     }
 
     function resetGame() { document.getElementById('result-overlay').style.display = 'none'; init(); }
