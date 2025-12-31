@@ -3,42 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>つみゲーム - Prototype v9</title>
+    <title>つみゲーム - Stable & Retry Fixed</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #f0f0f0; font-family: sans-serif; touch-action: none; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #333; font-family: sans-serif; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
         
-        #score-box { position: absolute; top: 20px; left: 20px; font-size: 22px; font-weight: bold; background: #fff; padding: 8px 15px; border-radius: 10px; border: 2px solid #333; }
-
+        #score-box { position: absolute; top: 20px; left: 20px; font-size: 20px; font-weight: bold; background: #fff; padding: 10px; border-radius: 8px; border: 2px solid #000; }
+        
         #preview-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 100px;
-            height: 100px;
-            background: #fff;
-            border: 4px solid #3498db;
-            border-radius: 15px;
-            pointer-events: auto;
-            cursor: pointer;
-            box-shadow: 0 5px 0 #2980b9;
-            overflow: hidden;
+            position: absolute; top: 20px; right: 20px; width: 90px; height: 90px;
+            background: #fff; border: 4px solid #3498db; border-radius: 12px;
+            pointer-events: auto; cursor: pointer; overflow: hidden;
+            box-shadow: 0 4px 0 #2980b9;
         }
-        #preview-container:active { transform: translateY(2px); box-shadow: 0 3px 0 #2980b9; }
-        .label { position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: bold; color: #3498db; }
-        
-        #msg { position: absolute; top: 50%; width: 100%; text-align: center; font-size: 40px; color: #e74c3c; font-weight: bold; pointer-events: none; }
+
+        /* 文字はボタンの邪魔をしないように pointer-events: none に設定 */
+        #msg { 
+            position: absolute; top: 40%; width: 100%; text-align: center; 
+            font-size: 40px; color: #ff3e3e; font-weight: bold; 
+            display: none; background: rgba(255,255,255,0.8); padding: 15px 0;
+            pointer-events: none; 
+            z-index: 150;
+        }
+
+        /* ボタンを最前面（z-index: 200）にする */
+        #retry-btn { 
+            position: absolute; top: 60%; left: 50%; transform: translateX(-50%); 
+            padding: 15px 30px; background: #3498db; color: #fff; 
+            border: none; border-radius: 8px; cursor: pointer; 
+            display: none; pointer-events: auto; 
+            font-size: 20px; font-weight: bold;
+            box-shadow: 0 5px 0 #2980b9;
+            z-index: 200; 
+        }
+        #retry-btn:active { transform: translate(-50%, 2px); box-shadow: 0 3px 0 #2980b9; }
     </style>
 </head>
 <body>
 
 <div id="ui-layer">
     <div id="score-box">SCORE: <span id="scoreVal">0</span></div>
-    <div id="preview-container">
-        <div class="label">NEXT (TAP TO ROTATE)</div>
-    </div>
-    <div id="msg"></div>
+    <div id="preview-container"></div>
+    <div id="msg">GAME OVER</div>
+    <button id="retry-btn">もう一度あそぶ</button>
 </div>
 
 <script>
@@ -46,12 +54,11 @@ const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
-
 const engine = Engine.create();
+
 const render = Render.create({
-    element: document.body,
-    engine: engine,
-    options: { width, height, wireframes: false, background: '#f8f8f8' }
+    element: document.body, engine: engine,
+    options: { width, height, wireframes: false, background: '#f0f0f0' }
 });
 
 const previewEngine = Engine.create();
@@ -59,116 +66,124 @@ previewEngine.gravity.y = 0;
 const previewRender = Render.create({
     element: document.getElementById('preview-container'),
     engine: previewEngine,
-    options: { width: 100, height: 100, wireframes: false, background: '#fff' }
+    options: { width: 90, height: 90, wireframes: false, background: '#fff' }
 });
-
-const DROP_Y_LINE = 180;
-let score = 0;
-let currentObj = null;
-let previewObj = null;
-let currentRotation = 0;
-let isGameOver = false;
-let isDragging = false;
-let hasMovedOut = false;
-
-// タップ判定用の変数
-let startX = 0;
-let startY = 0;
-const DRAG_THRESHOLD = 10; // 10px以上動いたらドラッグとみなす
 
 const sizes = [
-    { w: 30, h: 30, color: '#ff6b6b', pts: 30 },
-    { w: 60, h: 40, color: '#feca57', pts: 20 },
-    { w: 85, h: 45, color: '#48dbfb', pts: 10 }
+    { w: 40, h: 40, pts: 30, color: '#ff6b6b', img: 'block_s.png' },
+    { w: 70, h: 50, pts: 20, color: '#feca57', img: 'block_m.png' },
+    { w: 100, h: 60, pts: 10, color: '#48dbfb', img: 'block_l.png' }
 ];
 
-const ground = Bodies.rectangle(width / 2, height - 60, 220, 20, { 
-    isStatic: true, render: { fillStyle: '#2c3e50' } 
-});
-Composite.add(engine.world, ground);
+let score = 0, currentObj = null, previewObj = null, currentRotation = 0;
+let isDragging = false, hasMoved = false, isGameOver = false;
+let startX = 0, startY = 0, isTouchedInBox = false, lastRotateTime = 0;
 
-function spawnNext() {
+Composite.add(engine.world, Bodies.rectangle(width/2, height - 60, 220, 25, { isStatic: true, render: { fillStyle: '#222' } }));
+
+function spawn() {
     if (isGameOver) return;
-    const nextType = sizes[Math.floor(Math.random() * sizes.length)];
+    const type = sizes[Math.floor(Math.random() * sizes.length)];
+    hasMoved = false;
     currentRotation = 0;
-    hasMovedOut = false;
 
     if (previewObj) Composite.remove(previewEngine.world, previewObj);
-    previewObj = Bodies.rectangle(50, 50, nextType.w, nextType.h, {
-        isStatic: true,
-        render: { fillStyle: nextType.color }
+    previewObj = Bodies.rectangle(45, 45, type.w * 0.7, type.h * 0.7, {
+        isStatic: true, render: { fillStyle: type.color, sprite: { texture: type.img } }
     });
     Composite.add(previewEngine.world, previewObj);
 
-    currentObj = Bodies.rectangle(-500, -500, nextType.w, nextType.h, {
-        isStatic: true,
-        render: { fillStyle: nextType.color, opacity: 0 },
-        friction: 0.8
+    currentObj = Bodies.rectangle(width / 2, 160, type.w, type.h, {
+        isStatic: true, render: { opacity: 0, fillStyle: type.color, sprite: { texture: type.img } },
+        friction: 0.5
     });
-    currentObj.scoreValue = nextType.pts;
+    currentObj.scoreValue = type.pts;
     Composite.add(engine.world, currentObj);
 }
 
-function handleStart(x, y) {
-    if (!currentObj || isGameOver) return;
+function rotate() {
+    const now = Date.now();
+    if (now - lastRotateTime < 250) return;
+    lastRotateTime = now;
+    if (isGameOver || !currentObj || hasMoved) return;
+    currentRotation += Math.PI / 2;
+    Body.setAngle(currentObj, currentRotation);
+    Body.setAngle(previewObj, currentRotation);
+}
+
+const inputStart = (x, y) => {
+    if (isGameOver || !currentObj) return;
     const box = document.getElementById('preview-container').getBoundingClientRect();
-    if (x > box.left && x < box.right && y > box.top && y < box.bottom) {
-        isDragging = true;
-        startX = x;
-        startY = y;
-    }
-}
+    isTouchedInBox = (x > box.left && x < box.right && y > box.top && y < box.bottom);
+    isDragging = true;
+    startX = x; startY = y;
+};
 
-function handleMove(x, y) {
-    if (!isDragging || !currentObj) return;
-
-    // 指の移動距離を計算
+const inputMove = (x, y) => {
+    if (!isDragging || !currentObj || isGameOver) return;
     const dist = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
-
-    // しきい値を超えたら「引き出しモード」へ移行
-    if (dist > DRAG_THRESHOLD || hasMovedOut) {
-        if (!hasMovedOut) {
-            hasMovedOut = true;
-            currentObj.render.opacity = 1;
-            if (previewObj) previewObj.render.opacity = 0;
-        }
-        const xClamped = Math.max(30, Math.min(width - 30, x));
-        Body.setPosition(currentObj, { x: xClamped, y: DROP_Y_LINE });
+    if (dist > 10 || hasMoved) {
+        hasMoved = true;
+        currentObj.render.opacity = 1;
+        if (previewObj) previewObj.render.opacity = 0;
+        Body.setPosition(currentObj, { x: Math.max(20, Math.min(width - 20, x)), y: 160 });
     }
-}
+};
 
-function handleEnd() {
-    if (!isDragging || !currentObj) return;
-    isDragging = false;
-
-    if (!hasMovedOut) {
-        // しきい値以下ならタップ（回転）とみなす
-        currentRotation += Math.PI / 2;
-        Body.setAngle(currentObj, currentRotation);
-        Body.setAngle(previewObj, currentRotation);
-    } else {
-        // フィールドでの落下
+const inputEnd = (e) => {
+    if (!isDragging || !currentObj || isGameOver) {
+        isDragging = false;
+        return;
+    }
+    if (!hasMoved && isTouchedInBox) {
+        rotate();
+    } else if (hasMoved) {
         Body.setStatic(currentObj, false);
         score += currentObj.scoreValue;
         document.getElementById('scoreVal').innerText = score;
         currentObj = null;
-        setTimeout(spawnNext, 1000);
+        setTimeout(spawn, 1000);
     }
-}
+    isDragging = false;
+    hasMoved = false;
+};
 
-// リスナー
-window.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
-window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-window.addEventListener('mouseup', handleEnd);
-window.addEventListener('touchstart', (e) => handleStart(e.touches[0].clientX, e.touches[0].clientY), {passive:false});
-window.addEventListener('touchmove', (e) => handleMove(e.touches[0].clientX, e.touches[0].clientY), {passive:false});
-window.addEventListener('touchend', handleEnd);
+// リトライボタンのクリックイベント
+document.getElementById('retry-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    location.reload();
+});
+
+// スマホのタップにも対応
+document.getElementById('retry-btn').addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+    location.reload();
+});
+
+window.addEventListener('mousedown', e => inputStart(e.clientX, e.clientY));
+window.addEventListener('mousemove', e => inputMove(e.clientX, e.clientY));
+window.addEventListener('mouseup', e => inputEnd(e));
+
+window.addEventListener('touchstart', e => {
+    // ボタンをクリックした時はゲームのドラッグ処理を開始しない
+    if (e.target.id === 'retry-btn') return;
+    inputStart(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive: false});
+
+window.addEventListener('touchmove', e => {
+    inputMove(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive: false});
+
+window.addEventListener('touchend', e => {
+    inputEnd(e);
+}, {passive: false});
 
 Events.on(engine, 'afterUpdate', () => {
     Composite.allBodies(engine.world).forEach(body => {
-        if (body.position.y > height && !body.isStatic) {
+        if (!body.isStatic && body.position.y > height) {
             isGameOver = true;
-            document.getElementById('msg').innerText = "GAME OVER";
+            document.getElementById('msg').style.display = 'block';
+            document.getElementById('retry-btn').style.display = 'block';
         }
     });
 });
@@ -176,7 +191,7 @@ Events.on(engine, 'afterUpdate', () => {
 Render.run(render);
 Render.run(previewRender);
 Runner.run(Runner.create(), engine);
-spawnNext();
+spawn();
 </script>
 </body>
 </html>
