@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a1a">
-    <title>Block Territory - Fix Edition</title>
+    <title>Block Territory - Professional Fix</title>
     <style>
         :root {
             --p1-color: #3498db; --p2-color: #e74c3c; --bg-color: #1a1a1a;
@@ -14,12 +14,33 @@
             --iron-color: #7f8c8d; --scorch-color: #0d0d0d;
         }
 
-        * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; }
+        * { touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
             margin: 0; padding: 0; background-color: var(--bg-color); color: white;
             font-family: sans-serif; display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden; touch-action: none;
+            height: 100vh; overflow: hidden;
+        }
+
+        /* 縦画面警告オーバーレイ */
+        #orientation-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .phone-icon {
+            width: 40px; height: 70px; border: 3px solid white; border-radius: 5px;
+            margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out;
+        }
+        @keyframes rotatePhone {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(-90deg); }
+        }
+
+        @media screen and (orientation: portrait) {
+            #orientation-overlay { display: flex; }
+            #game-container { display: none; }
         }
 
         #game-container {
@@ -45,10 +66,10 @@
             width: 100%; aspect-ratio: 2 / 1; position: relative;
         }
 
-        .cell { background-color: #222; border-radius: 3px; position: relative; overflow: hidden; }
+        .cell { background-color: #222; border-radius: 3px; position: relative; }
         .cell.p1 { background-color: var(--p1-color); }
         .cell.p2 { background-color: var(--p2-color); }
-        .cell.hard { background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important; border: 1px solid #95a5a6; }
+        .cell.hard { background: linear-gradient(135deg, #bdc3c7 0%, #7f8c8d 50%, #2c3e50 100%) !important; }
         .cell.valid-preview { background-color: var(--preview-ok) !important; box-shadow: inset 0 0 5px #fff; }
         .cell.invalid-preview { background-color: var(--preview-ng) !important; }
         .cell.scorched { background-color: var(--scorch-color) !important; }
@@ -58,13 +79,18 @@
         .boom-anim { animation: boom 0.8s ease-out; }
         @keyframes boom { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.5); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.5); } }
 
-        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; }
-        .btn-skip { width: 100%; padding: 6px; font-weight: bold; border-radius: 6px; border: none; background: #555; color: white; font-size: 0.7rem; cursor: pointer; }
+        .next-box { width: 70px; height: 70px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #111; padding: 4px; border-radius: 6px; cursor: grab; }
+        .btn-skip { width: 100%; padding: 6px; font-weight: bold; border-radius: 6px; border: none; background: #555; color: white; font-size: 0.7rem; }
         #fs-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; z-index: 2000; }
         #result-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
+
+<div id="orientation-overlay">
+    <div class="phone-icon"></div>
+    <p>画面を横向きにしてください</p>
+</div>
 
 <button id="fs-btn" onclick="toggleFullScreen()">Fullscreen</button>
 
@@ -137,47 +163,39 @@
         let isDragging = false;
         let startX, startY;
 
-        const start = (e) => {
+        const handlePointerDown = (e) => {
             if (isWait) return;
             const targetBox = document.getElementById(`next-p${currentPlayer}`);
             if (targetBox.contains(e.target)) {
                 isDragging = true;
-                const touch = e.touches ? e.touches[0] : e;
-                startX = touch.clientX; startY = touch.clientY;
-                if(e.cancelable) e.preventDefault();
+                startX = e.clientX; startY = e.clientY;
+                e.target.setPointerCapture(e.pointerId);
             }
         };
 
-        const move = (e) => {
+        const handlePointerMove = (e) => {
             if (!isDragging) return;
-            const touch = e.touches ? e.touches[0] : e;
-            const pos = getBoardPos(touch.clientX, touch.clientY);
+            const pos = getBoardPos(e.clientX, e.clientY);
             clearPreview();
             if (pos) showPreview(pos.r, pos.c);
-            if(e.cancelable) e.preventDefault();
         };
 
-        const end = (e) => {
+        const handlePointerUp = (e) => {
             if (!isDragging) return;
-            const touch = e.changedTouches ? e.changedTouches[0] : e;
-            const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
-            
-            if (dist < 10) { // タップ判定の感度を向上
+            const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+            if (dist < 8) {
                 rotatePiece();
             } else {
-                const pos = getBoardPos(touch.clientX, touch.clientY);
+                const pos = getBoardPos(e.clientX, e.clientY);
                 if (pos) tryPlace(pos.r, pos.c);
             }
             isDragging = false;
             clearPreview();
         };
 
-        window.addEventListener('touchstart', start, {passive:false});
-        window.addEventListener('touchmove', move, {passive:false});
-        window.addEventListener('touchend', end, {passive:false});
-        window.addEventListener('mousedown', start);
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', end);
+        window.onpointerdown = handlePointerDown;
+        window.onpointermove = handlePointerMove;
+        window.onpointerup = handlePointerUp;
     }
 
     function getBoardPos(clientX, clientY) {
@@ -230,13 +248,9 @@
                     scores[currentPlayer]++;
                     document.getElementById(`cell-${tr}-${tc}`).className = `cell ${isHard ? 'hard' : 'p' + currentPlayer}`;
                     
-                    // 厳密な爆発判定: 配置したマスそのものに爆弾がある場合のみ
                     [visibleBombs, hiddenBombs].forEach(list => {
                         const idx = list.findIndex(b => b.r === tr && b.c === tc);
-                        if(idx !== -1) { 
-                            explodedPos = {r: tr, c: tc}; 
-                            list.splice(idx, 1); 
-                        }
+                        if(idx !== -1) { explodedPos = {r: tr, c: tc}; list.splice(idx, 1); }
                     });
                 }
             });
@@ -255,7 +269,6 @@
         document.getElementById('board').classList.add('shake');
         document.getElementById('boom-text').classList.add('boom-anim');
         
-        // 爆風範囲（3x3）
         for (let r = er - 1; r <= er + 1; r++) {
             for (let c = ec - 1; c <= ec + 1; c++) {
                 if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
@@ -263,7 +276,11 @@
                     if (board[r][c] !== "hard") {
                         if (typeof board[r][c] === 'number' && board[r][c] !== 0) scores[board[r][c]]--;
                         board[r][c] = 0;
-                        setTimeout(() => { cell.className = 'cell scorched'; }, 500);
+                        setTimeout(() => { 
+                            cell.className = 'cell scorched';
+                            // 2.5秒後に焦げ跡も消し、完全にリセットする
+                            setTimeout(() => { if(board[r][c] === 0) cell.className = 'cell'; }, 2000);
+                        }, 500);
                     }
                 }
             }
@@ -293,7 +310,7 @@
         let nextPlayer = (currentPlayer === 1) ? 2 : 1;
         if (skipPenalty[nextPlayer]) {
             skipPenalty[nextPlayer] = false;
-            document.getElementById('penalty-text').innerText = `P${nextPlayer} STUNNED! P${currentPlayer} Turn Again`;
+            document.getElementById('penalty-text').innerText = `P${nextPlayer} STUNNED!`;
         } else {
             document.getElementById('penalty-text').innerText = "";
             currentPlayer = nextPlayer;
